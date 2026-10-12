@@ -8,26 +8,7 @@ import test from 'node:test';
 
 import { initializeDatabase, migrations } from '../src/data/migrations.ts';
 import { createRepositories } from '../src/data/repositories.ts';
-
-// Execute production SQL against real SQLite without loading React Native native modules.
-function adapt(sqlite) {
-  return {
-    async execAsync(sql) { sqlite.exec(sql); },
-    async runAsync(sql, ...params) { return sqlite.prepare(sql).run(...params); },
-    async getFirstAsync(sql, ...params) { return sqlite.prepare(sql).get(...params) ?? null; },
-    async getAllAsync(sql, ...params) { return sqlite.prepare(sql).all(...params); },
-    async withExclusiveTransactionAsync(task) {
-      sqlite.exec('BEGIN');
-      try {
-        await task(this);
-        sqlite.exec('COMMIT');
-      } catch (error) {
-        sqlite.exec('ROLLBACK');
-        throw error;
-      }
-    },
-  };
-}
+import { adapt } from './sqlite.mjs';
 
 async function fixture(t) {
   const sqlite = new DatabaseSync(':memory:');
@@ -46,13 +27,13 @@ test('initialization creates all tables, indexes and foreign keys; reruns preser
   const id = await repositories.profiles.save({ name: 'Local user', height_cm: 170 });
   await initializeDatabase(db);
   assert.equal((await repositories.profiles.get()).id, id);
-  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 2);
+  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 3);
   assert.equal((await db.getFirstAsync('PRAGMA foreign_keys')).foreign_keys, 1);
-  const tables = await db.getAllAsync("SELECT name FROM sqlite_master WHERE type = 'table'");
+  const tables = await db.getAllAsync("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'food_search%'");
   assert.deepEqual(tables.map((row) => row.name).sort(),
     ['diary_entries', 'foods', 'planned_meals', 'user_profiles', 'weight_history']);
-  const indexes = await db.getAllAsync("SELECT name FROM sqlite_master WHERE type = 'index' AND sql IS NOT NULL");
-  assert.equal(indexes.length, 6);
+  const indexes = await db.getAllAsync("SELECT name FROM sqlite_master WHERE type = 'index' AND sql IS NOT NULL AND tbl_name IN ('foods', 'diary_entries', 'planned_meals', 'weight_history')");
+  assert.equal(indexes.length, 7);
 });
 
 test('failed migrations roll back schema and version, then can retry', async (t) => {
@@ -69,14 +50,14 @@ test('failed migrations roll back schema and version, then can retry', async (t)
   assert.equal(await db.getFirstAsync("SELECT name FROM sqlite_master WHERE type = 'table'"), null);
   db.execAsync = original;
   await initializeDatabase(db);
-  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 2);
+  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 3);
 });
 
 test('a future schema is rejected without rewriting its version', async (t) => {
   const { db } = await fixture(t);
-  await db.execAsync('PRAGMA user_version = 3');
+  await db.execAsync('PRAGMA user_version = 4');
   await assert.rejects(initializeDatabase(db), /newer version/);
-  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 3);
+  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 4);
 });
 
 test('profile saves retain one stable ID and food input is parameterized', async (t) => {
@@ -88,7 +69,7 @@ test('profile saves retain one stable ID and food input is parameterized', async
   const foodId = await r.foods.create({ ...food, name: text });
   assert.match(foodId, /^[0-9a-f-]{36}$/);
   assert.equal((await r.foods.get(foodId)).name, text);
-  assert.equal((await r.foods.list()).length, 1);
+  assert.equal((await r.foods.list()).length, 5);
   await assert.rejects(r.foods.update('missing', food), /not found/);
 });
 
@@ -175,9 +156,12 @@ test('migration upgrades a version 1 profile without losing ID or existing recor
   await db.execAsync('PRAGMA user_version = 1');
   await db.runAsync('INSERT INTO user_profiles (id, name, height_cm, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
     'existing-id', 'Existing user', 175, at, at);
-  const before = createRepositories(db, randomUUID);
-  const foodId = await before.foods.create(food);
-  const diaryId = await before.diary.add('existing-id', foodId, 50, at);
+  const foodId = randomUUID();
+  const diaryId = randomUUID();
+  await db.runAsync('INSERT INTO foods (id, name, calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    foodId, food.name, food.calories_per_100g, food.protein_per_100g, food.carbs_per_100g, food.fat_per_100g, at, at);
+  await db.runAsync('INSERT INTO diary_entries (id, profile_id, food_id, name, calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g, amount_g, consumed_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    diaryId, 'existing-id', foodId, food.name, food.calories_per_100g, food.protein_per_100g, food.carbs_per_100g, food.fat_per_100g, 50, at, at);
   await initializeDatabase(db);
   const r = createRepositories(db, randomUUID);
   const profile = await r.profiles.get();
@@ -210,7 +194,7 @@ test('failure during migration 2 preserves version 1 profile and rolls back new 
   assert.equal((await db.getAllAsync('PRAGMA table_info(user_profiles)')).some((column) => column.name === 'sex'), false);
   db.execAsync = original;
   await initializeDatabase(db);
-  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 2);
+  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 3);
 });
 
 test('profile edits persist all inputs and reject unsafe overrides without changing saved data', async (t) => {

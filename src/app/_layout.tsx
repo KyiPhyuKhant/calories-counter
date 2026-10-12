@@ -16,6 +16,9 @@ export default function RootLayout() {
           }}
         >
           <Stack.Screen name="profile" options={{ headerShown: true, title: 'Your profile', headerTintColor: theme.colors.accent }} />
+          <Stack.Screen name="foods/index" options={{ headerShown: true, title: 'Food catalog', headerTintColor: theme.colors.accent }} />
+          <Stack.Screen name="foods/[id]" options={{ headerShown: true, title: 'Food details', headerTintColor: theme.colors.accent }} />
+          <Stack.Screen name="foods/edit" options={{ headerShown: true, title: 'Custom food', headerTintColor: theme.colors.accent }} />
         </Stack>
       </DatabaseProvider>
     </>

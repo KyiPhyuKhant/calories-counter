@@ -34,6 +34,11 @@ export function WelcomeScreen() {
             <Text style={styles.profileButtonText}>Set up your profile</Text>
           </Pressable>
         </Link>
+        <Link href="/foods" asChild>
+          <Pressable accessibilityRole="button" style={styles.profileButton}>
+            <Text style={styles.profileButtonText}>Browse foods</Text>
+          </Pressable>
+        </Link>
         <Text style={styles.footer}>A fresh perspective, every day.</Text>
       </ScrollView>
     </SafeAreaView>

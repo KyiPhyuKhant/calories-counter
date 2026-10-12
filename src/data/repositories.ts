@@ -1,14 +1,14 @@
 import type { Database, SqlExecutor } from './database.ts';
 import { calculateCalorieGoal, type CalorieProfile } from '../domain/calorieGoal.ts';
+import { createFoodRepository } from './foodRepository.ts';
 
 export interface Nutrition {
   name: string;
   calories_per_100g: number;
-  protein_per_100g: number;
-  carbs_per_100g: number;
-  fat_per_100g: number;
+  protein_per_100g: number | null;
+  carbs_per_100g: number | null;
+  fat_per_100g: number | null;
 }
-export interface Food extends Nutrition { id: string; created_at: string; updated_at: string }
 export interface Profile {
   id: string;
   name: string;
@@ -46,13 +46,6 @@ function timestamp(value: string) {
   if (!Number.isFinite(date.getTime())) throw new Error('Invalid timestamp.');
   return date.toISOString();
 }
-function nutritionValues(food: Nutrition) {
-  const values = [food.calories_per_100g, food.protein_per_100g, food.carbs_per_100g, food.fat_per_100g];
-  if (values.some((value) => !Number.isFinite(value) || value < 0)) {
-    throw new Error('Nutrition values must be finite and nonnegative.');
-  }
-  return [name(food.name), ...values];
-}
 async function requireChanged(result: Promise<{ changes: number }>) {
   if ((await result).changes !== 1) throw new Error('Record not found.');
 }
@@ -71,9 +64,12 @@ export function createRepositories(db: Database, newId: () => string, now = () =
       INSERT INTO ${table} (id, profile_id, food_id, name, calories_per_100g,
         protein_per_100g, carbs_per_100g, fat_per_100g, amount_g, ${timeColumn}, created_at)
       SELECT ?, ?, id, name, calories_per_100g, protein_per_100g, carbs_per_100g,
-        fat_per_100g, ?, ?, ? FROM foods WHERE id = ?`,
+        fat_per_100g, ?, ?, ? FROM foods WHERE id = ? AND calories_per_100g IS NOT NULL`,
     id, profileId, amountG, time, now(), foodId);
-    if (result.changes !== 1) throw new Error('Food not found.');
+    if (result.changes !== 1) {
+      const food = await tx.getFirstAsync('SELECT id FROM foods WHERE id = ?', foodId);
+      throw new Error(food ? 'This food needs a gram conversion before use in the diary.' : 'Food not found.');
+    }
     return id;
   }
 
@@ -114,25 +110,7 @@ export function createRepositories(db: Database, newId: () => string, now = () =
         return id;
       },
     },
-    foods: {
-      get: (id: string) => db.getFirstAsync<Food>('SELECT * FROM foods WHERE id = ?', id),
-      list: () => db.getAllAsync<Food>('SELECT * FROM foods ORDER BY name COLLATE NOCASE, id'),
-      async create(input: Nutrition) {
-        const values = nutritionValues(input);
-        const id = newId();
-        const time = now();
-        await db.runAsync(`INSERT INTO foods (id, name, calories_per_100g, protein_per_100g,
-          carbs_per_100g, fat_per_100g, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        id, ...values, time, time);
-        return id;
-      },
-      async update(id: string, input: Nutrition) {
-        await requireChanged(db.runAsync(`UPDATE foods SET name = ?, calories_per_100g = ?,
-          protein_per_100g = ?, carbs_per_100g = ?, fat_per_100g = ?, updated_at = ? WHERE id = ?`,
-        ...nutritionValues(input), now(), id));
-      },
-      remove: (id: string) => requireChanged(db.runAsync('DELETE FROM foods WHERE id = ?', id)),
-    },
+    foods: createFoodRepository(db, newId, now),
     diary: {
       add: (profileId: string, foodId: string, amountG: number, consumedAt: string) =>
         insertSnapshot(db, 'diary_entries', profileId, foodId, amountG, consumedAt),

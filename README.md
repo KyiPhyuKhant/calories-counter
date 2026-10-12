@@ -2,7 +2,7 @@
 
 An iOS-first React Native app built with Expo, Expo Router, and strict TypeScript.
 The app currently contains a welcome screen, an editable profile and calorie
-goal calculator, and local SQLite infrastructure.
+goal calculator, a searchable food catalog, and local SQLite infrastructure.
 It does not require an account, server, or network connection to store data.
 
 ## Development
@@ -42,6 +42,7 @@ npx expo export --platform ios
 - `src/screens/`: Screen content, kept separate from navigation.
 - `src/theme/`: Shared colors and spacing.
 - `src/domain/`: Pure calorie equations, validation, and target guardrails.
+- `src/components/`: Shared food form fields and catalog presentation.
 - `src/data/`: Database initialization, versioned migrations, typed repositories,
   and the provider that makes repositories available with `useRepositories()`.
 - `tests/`: Real SQLite verification of migrations and repository behavior.
@@ -113,3 +114,39 @@ Sources:
 - [AHA/ACC/TOS adult weight-management guideline](https://pmc.ncbi.nlm.nih.gov/articles/PMC5819889/).
 - [CDC adult BMI categories](https://www.cdc.gov/bmi/adult-calculator/bmi-categories.html).
 - [NIDDK calculator population guidance](https://www.niddk.nih.gov/health-information/weight-management/body-weight-planner).
+
+## Food catalog
+
+Open **Browse foods** to search the local catalog, view serving nutrition, or add
+a custom food. Only custom foods can be edited or deleted. Catalog searches use
+SQLite FTS5 with Unicode tokens, accent folding, and prefix matching for each
+word. Searches are parameterized, pagination is deterministic, and insert,
+update, and delete triggers keep the index synchronized.
+
+Migration 3 adds four bundled development samples. All sample values are
+invented and explicitly labeled as unverified in the list, details, and notes.
+They are demonstration data, not nutritional guidance. Each has a stable ID and
+is inserted once by the migration.
+
+Nutrition is stored per declared serving amount/unit. Optional macros remain
+`NULL` when unknown, rather than being reported as zero. Serving calculations
+scale these values; mass conversions support grams, kilograms, and ounces.
+No density is assumed for milliliters, cups, pieces, or generic servings.
+Existing gram-based diary operations reject foods without a mass conversion;
+food tracking UI is not part of this step. Existing historical snapshots and
+food links survive the migration, and catalog edits do not rewrite snapshots.
+
+Custom duplicates are rejected for the same normalized name, serving amount,
+and unit. Preexisting duplicate records are preserved during migration. External
+foods are deduplicated by provider and provider ID, keeping stable local IDs.
+`src/data/foodProvider.ts` defines a future integration contract and the food
+repository can persist supplied external records for offline search. No live
+provider, USDA connection, online search, or API credentials are implemented.
+
+To verify search, custom-food CRUD, migration preservation, and serving math:
+
+```sh
+npm test
+npm run typecheck
+npm run lint
+```
