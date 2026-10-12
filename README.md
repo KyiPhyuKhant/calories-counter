@@ -1,7 +1,7 @@
 # Calorie Counter
 
 An iOS-first React Native app built with Expo, Expo Router, and strict TypeScript.
-The app currently contains a welcome screen, an editable profile and calorie
+The app currently contains a daily dashboard, an editable profile and calorie
 goal calculator, a searchable food catalog, and a daily food diary backed by SQLite.
 It does not require an account, server, or network connection to store data.
 
@@ -72,7 +72,7 @@ Node SQLite adapter. They do not exercise Expo's native bridge or simulator UI.
 
 ## Calorie estimates
 
-Open **Set up your profile** on the welcome screen to enter or edit your profile.
+Open the profile button on the dashboard to enter or edit your profile.
 The profile and optional manual target are saved locally. Migration 2 preserves
 existing profile IDs and leaves new fields unset until the user completes them.
 Suggested targets are derived from the saved inputs, not stored as stale totals.
@@ -117,7 +117,7 @@ Sources:
 
 ## Food catalog
 
-Open **Browse foods** to search the local catalog, view serving nutrition, or add
+Open the dashboard's food catalog button to search locally, view serving nutrition, or add
 a custom food. Only custom foods can be edited or deleted. Catalog searches use
 SQLite FTS5 with Unicode tokens, accent folding, and prefix matching for each
 word. Searches are parameterized, pagination is deterministic, and insert,
@@ -154,7 +154,7 @@ npm run lint
 
 ## Daily diary
 
-Open **Open food diary** on the welcome screen. Use the previous/next controls,
+Open the diary button on the dashboard. Use the previous/next controls,
 the native date picker, or Today to select a local calendar day. Each meal has an
 add button that opens the existing offline catalog. Select a food, enter an
 amount in its declared unit or a fractional number of servings, select a meal,
@@ -181,3 +181,23 @@ Quantity edits and recalculated totals are also committed together. Missing
 macro values remain unknown. Development samples remain labeled as unverified
 after logging. Tests cover meal/day totals, date separation, local midnights in
 Tokyo and Los Angeles, DST, migration rollback, historical edits and deletion.
+
+## Daily dashboard
+
+The home screen reads the selected local date's consumed entries and saved profile
+in one database transaction. Meal summaries and progress use diary snapshot totals;
+planned meals, including plans for the selected day, are never counted.
+Remaining calories equal target minus consumed: positive values show remaining,
+zero indicates the target is reached, and negative values show the excess.
+The accessible progress bar caps at 100%, with a restrained warning color over target.
+
+The current profile's calculated or manual target applies to every selected date;
+historical target versions are not stored. Calorie needs remain estimates, not
+measured expenditure. An incomplete or invalid profile shows consumed calories
+without inventing a target and offers profile setup.
+
+Successful diary and profile mutations notify the focused dashboard after commit.
+Returning to it also reloads persisted data. Loading failures offer a retry and
+outdated asynchronous reads cannot replace a newer date's result. Dashboard tests
+cover all three target states, manual overrides, date and plan exclusion, and
+refresh notifications for additions, edits, deletions, and failed writes.

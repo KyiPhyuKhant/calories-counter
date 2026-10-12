@@ -2,6 +2,8 @@ import type { Database, SqlExecutor } from './database.ts';
 import { calculateCalorieGoal, type CalorieProfile } from '../domain/calorieGoal.ts';
 import { createFoodRepository } from './foodRepository.ts';
 import { createDiaryRepository } from './diaryRepository.ts';
+import { summarizeDashboard } from '../domain/dashboard.ts';
+import { validateCalendarDate, type DiaryEntry } from '../domain/diary.ts';
 
 export interface Nutrition {
   name: string;
@@ -73,7 +75,7 @@ export function createRepositories(db: Database, newId: () => string, now = () =
     return id;
   }
 
-  return {
+  const repositories = {
     profiles: {
       get: () => db.getFirstAsync<Profile>('SELECT * FROM user_profiles WHERE singleton = 1'),
       async saveCalorieProfile(input: CalorieProfile) {
@@ -131,6 +133,46 @@ export function createRepositories(db: Database, newId: () => string, now = () =
       list: (profileId: string) => db.getAllAsync<WeightEntry>(
         'SELECT * FROM weight_history WHERE profile_id = ? ORDER BY measured_at DESC, id', profileId),
       remove: (id: string) => requireChanged(db.runAsync('DELETE FROM weight_history WHERE id = ?', id)),
+    },
+  };
+
+  const listeners = new Set<() => void>();
+  function observe<Args extends unknown[], Result>(operation: (...args: Args) => Promise<Result>) {
+    return async (...args: Args): Promise<Result> => {
+      const result = await operation(...args);
+      for (const listener of listeners) {
+        try { listener(); } catch (error) { console.error('Database change listener failed.', error); }
+      }
+      return result;
+    };
+  }
+  return {
+    ...repositories,
+    profiles: { ...repositories.profiles,
+      save: observe(repositories.profiles.save),
+      saveCalorieProfile: observe(repositories.profiles.saveCalorieProfile),
+    },
+    diary: { ...repositories.diary,
+      add: observe(repositories.diary.add), addEntry: observe(repositories.diary.addEntry),
+      update: observe(repositories.diary.update), remove: observe(repositories.diary.remove),
+    },
+    dashboard: {
+      async getDay(date: string) {
+        validateCalendarDate(date);
+        let profile: Profile | null = null;
+        let entries: DiaryEntry[] = [];
+        // Keep the profile and consumed entries in a single consistent read snapshot.
+        await db.withExclusiveTransactionAsync(async (tx) => {
+          profile = await tx.getFirstAsync<Profile>('SELECT * FROM user_profiles WHERE singleton = 1');
+          entries = await tx.getAllAsync<DiaryEntry>(`SELECT * FROM diary_entries WHERE entry_date = ?
+            AND profile_id = (SELECT id FROM user_profiles WHERE singleton = 1) ORDER BY created_at, id`, date);
+        });
+        return summarizeDashboard(profile, entries);
+      },
+    },
+    subscribe(listener: () => void) {
+      listeners.add(listener);
+      return () => { listeners.delete(listener); };
     },
   };
 }
