@@ -1,0 +1,41 @@
+# Dependencies and Expo-generated state
+node_modules/
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+coverage/
+*.tsbuildinfo
+
+# Generated native projects (Expo Continuous Native Generation)
+/ios/
+/android/
+Pods/
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.ipa
+*.dSYM/
+
+# Local configuration, credentials, and signing material
+.env
+.env.*
+!.env.example
+.npmrc
+*.pem
+*.p8
+*.p12
+*.mobileprovision
+*.keystore
+*.jks
+credentials.json
+.aws/
+
+# Logs, editor state, and operating system files
+*.log
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
