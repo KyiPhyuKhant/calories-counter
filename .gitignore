@@ -7,6 +7,14 @@ expo-env.d.ts
 coverage/
 *.tsbuildinfo
 
+# Local databases may contain personal nutrition and profile data
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
 # Generated native projects (Expo Continuous Native Generation)
 /ios/
 /android/
