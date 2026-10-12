@@ -8,7 +8,7 @@ import { useRepositories } from '@/data/DatabaseProvider';
 import type { Food } from '@/domain/food';
 import { theme } from '@/theme/theme';
 
-export function FoodCatalogScreen() {
+export function FoodCatalogScreen({ onSelect }: { onSelect?: (food: Food) => void } = {}) {
   const { foods } = useRepositories();
   const router = useRouter();
   const [query, setQuery] = useState('');
@@ -59,8 +59,8 @@ export function FoodCatalogScreen() {
     </View>
     <FlatList data={loading ? [] : items} keyExtractor={(food) => food.id} keyboardShouldPersistTaps="handled"
       contentContainerStyle={local.list}
-      renderItem={({ item }) => <Pressable accessibilityRole="button" accessibilityLabel={`View ${item.name}`}
-        style={local.row} onPress={() => router.push({ pathname: '/foods/[id]', params: { id: item.id } })}>
+      renderItem={({ item }) => <Pressable accessibilityRole="button" accessibilityLabel={`${onSelect ? 'Select' : 'View'} ${item.name}`}
+        style={local.row} onPress={() => onSelect ? onSelect(item) : router.push({ pathname: '/foods/[id]', params: { id: item.id } })}>
         <Text style={styles.label}>{item.name}</Text>
         <Text style={styles.body}>{Number(item.calories.toFixed(1))} kcal / {item.serving_amount} {item.serving_unit}</Text>
         <Text style={styles.detail}>{foodSourceLabel(item)}</Text>

@@ -27,7 +27,7 @@ test('initialization creates all tables, indexes and foreign keys; reruns preser
   const id = await repositories.profiles.save({ name: 'Local user', height_cm: 170 });
   await initializeDatabase(db);
   assert.equal((await repositories.profiles.get()).id, id);
-  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 3);
+  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 4);
   assert.equal((await db.getFirstAsync('PRAGMA foreign_keys')).foreign_keys, 1);
   const tables = await db.getAllAsync("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'food_search%'");
   assert.deepEqual(tables.map((row) => row.name).sort(),
@@ -50,14 +50,14 @@ test('failed migrations roll back schema and version, then can retry', async (t)
   assert.equal(await db.getFirstAsync("SELECT name FROM sqlite_master WHERE type = 'table'"), null);
   db.execAsync = original;
   await initializeDatabase(db);
-  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 3);
+  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 4);
 });
 
 test('a future schema is rejected without rewriting its version', async (t) => {
   const { db } = await fixture(t);
-  await db.execAsync('PRAGMA user_version = 4');
+  await db.execAsync('PRAGMA user_version = 5');
   await assert.rejects(initializeDatabase(db), /newer version/);
-  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 4);
+  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 5);
 });
 
 test('profile saves retain one stable ID and food input is parameterized', async (t) => {
@@ -102,7 +102,7 @@ test('foreign keys and constraints reject invalid records; repositories validate
   const { db, repositories: r } = await fixture(t);
   const profile = await r.profiles.save({ name: 'User' });
   const foodId = await r.foods.create(food);
-  await assert.rejects(r.diary.add('missing', foodId, 50, at), /FOREIGN KEY/);
+  await assert.rejects(r.diary.add('missing', foodId, 50, at), /Profile not found/);
   await assert.rejects(r.plans.add(profile, 'missing', 50, at), /Food not found/);
   await assert.rejects(r.weights.add('missing', 70, at), /FOREIGN KEY/);
   await assert.rejects(r.foods.create({ ...food, fat_per_100g: -1 }), /nonnegative/);
@@ -194,7 +194,7 @@ test('failure during migration 2 preserves version 1 profile and rolls back new 
   assert.equal((await db.getAllAsync('PRAGMA table_info(user_profiles)')).some((column) => column.name === 'sex'), false);
   db.execAsync = original;
   await initializeDatabase(db);
-  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 3);
+  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 4);
 });
 
 test('profile edits persist all inputs and reject unsafe overrides without changing saved data', async (t) => {

@@ -1,6 +1,7 @@
 import type { Database, SqlExecutor } from './database.ts';
 import { calculateCalorieGoal, type CalorieProfile } from '../domain/calorieGoal.ts';
 import { createFoodRepository } from './foodRepository.ts';
+import { createDiaryRepository } from './diaryRepository.ts';
 
 export interface Nutrition {
   name: string;
@@ -30,7 +31,6 @@ export interface FoodSnapshot extends Nutrition {
   amount_g: number;
   created_at: string;
 }
-export interface DiaryEntry extends FoodSnapshot { consumed_at: string }
 export interface PlannedMeal extends FoodSnapshot { planned_at: string }
 export interface WeightEntry { id: string; profile_id: string; weight_kg: number; measured_at: string; created_at: string }
 
@@ -52,13 +52,13 @@ async function requireChanged(result: Promise<{ changes: number }>) {
 
 export function createRepositories(db: Database, newId: () => string, now = () => new Date().toISOString()) {
   async function insertSnapshot(
-    tx: SqlExecutor, table: 'diary_entries' | 'planned_meals',
+    tx: SqlExecutor, table: 'planned_meals',
     profileId: string, foodId: string, amountG: number, at: string,
   ) {
     positive(amountG);
     const time = timestamp(at);
     const id = newId();
-    const timeColumn = table === 'diary_entries' ? 'consumed_at' : 'planned_at';
+    const timeColumn = 'planned_at';
     // One statement copies the catalog snapshot atomically. Identifiers are internal constants.
     const result = await tx.runAsync(`
       INSERT INTO ${table} (id, profile_id, food_id, name, calories_per_100g,
@@ -111,13 +111,7 @@ export function createRepositories(db: Database, newId: () => string, now = () =
       },
     },
     foods: createFoodRepository(db, newId, now),
-    diary: {
-      add: (profileId: string, foodId: string, amountG: number, consumedAt: string) =>
-        insertSnapshot(db, 'diary_entries', profileId, foodId, amountG, consumedAt),
-      list: (profileId: string) => db.getAllAsync<DiaryEntry>(
-        'SELECT * FROM diary_entries WHERE profile_id = ? ORDER BY consumed_at DESC, id', profileId),
-      remove: (id: string) => requireChanged(db.runAsync('DELETE FROM diary_entries WHERE id = ?', id)),
-    },
+    diary: createDiaryRepository(db, newId, now),
     plans: {
       add: (profileId: string, foodId: string, amountG: number, plannedAt: string) =>
         insertSnapshot(db, 'planned_meals', profileId, foodId, amountG, plannedAt),

@@ -2,6 +2,7 @@ import type { Database } from './database.ts';
 import { developmentFoods } from './developmentFoods.ts';
 import { insertBundledFood } from './foodRepository.ts';
 import { normalizeFoodName } from '../domain/food.ts';
+import { localCalendarDate } from '../domain/diary.ts';
 
 const nutritionColumns = `
   name TEXT NOT NULL CHECK (length(trim(name)) > 0),
@@ -155,6 +156,47 @@ export const migrations = [{
     CREATE INDEX plans_profile_time_idx ON planned_meals(profile_id, planned_at, id);
     CREATE INDEX plans_food_idx ON planned_meals(food_id);
   `,
+}, {
+  version: 4,
+  sql: `
+    CREATE TABLE diary_v4 (
+      id TEXT PRIMARY KEY NOT NULL CHECK (length(id) > 0),
+      profile_id TEXT NOT NULL REFERENCES user_profiles(id) ON DELETE RESTRICT,
+      food_id TEXT REFERENCES foods(id) ON DELETE SET NULL,
+      name TEXT NOT NULL CHECK (length(trim(name)) > 0),
+      source TEXT NOT NULL CHECK (source IN ('bundled', 'external', 'custom', 'unknown')),
+      provider TEXT, external_id TEXT,
+      serving_amount REAL NOT NULL CHECK (serving_amount > 0),
+      serving_unit TEXT NOT NULL CHECK (serving_unit IN ('g', 'kg', 'oz', 'ml', 'cup', 'piece', 'serving')),
+      calories REAL NOT NULL CHECK (calories >= 0),
+      protein REAL CHECK (protein >= 0), carbohydrates REAL CHECK (carbohydrates >= 0), fat REAL CHECK (fat >= 0), notes TEXT,
+      entry_date TEXT NOT NULL CHECK (length(entry_date) = 10 AND date(entry_date, '+0 days') IS NOT NULL AND date(entry_date, '+0 days') = entry_date),
+      meal TEXT NOT NULL CHECK (meal IN ('breakfast', 'lunch', 'dinner', 'snacks')),
+      quantity REAL NOT NULL CHECK (quantity > 0),
+      quantity_mode TEXT NOT NULL CHECK (quantity_mode IN ('amount', 'servings')),
+      total_calories REAL NOT NULL CHECK (total_calories >= 0),
+      total_protein REAL CHECK (total_protein >= 0), total_carbohydrates REAL CHECK (total_carbohydrates >= 0), total_fat REAL CHECK (total_fat >= 0),
+      consumed_at TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+      amount_g REAL CHECK (amount_g > 0), calories_per_100g REAL CHECK (calories_per_100g >= 0),
+      protein_per_100g REAL CHECK (protein_per_100g >= 0), carbs_per_100g REAL CHECK (carbs_per_100g >= 0), fat_per_100g REAL CHECK (fat_per_100g >= 0)
+    );
+    INSERT INTO diary_v4 (id, profile_id, food_id, name, source, provider, external_id,
+      serving_amount, serving_unit, calories, protein, carbohydrates, fat,
+      entry_date, meal, quantity, quantity_mode, total_calories, total_protein, total_carbohydrates, total_fat,
+      consumed_at, created_at, updated_at, amount_g, calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g)
+    SELECT d.id, d.profile_id, d.food_id, d.name, coalesce(f.source, 'unknown'), f.provider, f.external_id,
+      100, 'g', d.calories_per_100g, d.protein_per_100g, d.carbs_per_100g, d.fat_per_100g,
+      substr(d.consumed_at, 1, 10), 'snacks', d.amount_g, 'amount',
+      d.calories_per_100g * d.amount_g / 100, d.protein_per_100g * d.amount_g / 100,
+      d.carbs_per_100g * d.amount_g / 100, d.fat_per_100g * d.amount_g / 100,
+      d.consumed_at, d.created_at, d.created_at, d.amount_g,
+      d.calories_per_100g, d.protein_per_100g, d.carbs_per_100g, d.fat_per_100g
+      FROM diary_entries d LEFT JOIN foods f ON f.id = d.food_id;
+    DROP TABLE diary_entries;
+    ALTER TABLE diary_v4 RENAME TO diary_entries;
+    CREATE INDEX diary_profile_date_meal_idx ON diary_entries(profile_id, entry_date, meal, created_at, id);
+    CREATE INDEX diary_food_idx ON diary_entries(food_id);
+  `,
 }] as const;
 
 export async function initializeDatabase(db: Database) {
@@ -182,6 +224,13 @@ export async function initializeDatabase(db: Database) {
               keys.add(key);
             }
             for (const food of developmentFoods) await insertBundledFood(tx, food.id, food);
+          }
+          if (migration.version === 4) {
+            const entries = await tx.getAllAsync<{ id: string; consumed_at: string }>('SELECT id, consumed_at FROM diary_entries');
+            // Old entries had only an instant. Resolve their day in the current device
+            // timezone once, then retain that calendar date when the user travels.
+            for (const entry of entries) await tx.runAsync('UPDATE diary_entries SET entry_date = ? WHERE id = ?',
+              localCalendarDate(new Date(entry.consumed_at)), entry.id);
           }
           // Only trusted migration constants are interpolated, never user input.
           await tx.execAsync(`PRAGMA user_version = ${migration.version}`);

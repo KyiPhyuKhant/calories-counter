@@ -54,17 +54,22 @@ export function normalizeFood(input: FoodInput) {
   };
 }
 
+export function convertServingAmount(amount: number, fromUnit: ServingUnit, toUnit: ServingUnit) {
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 100000) throw new Error('Enter a positive finite serving amount up to 100000.');
+  const grams: Partial<Record<ServingUnit, number>> = { g: 1, kg: 1000, oz: 28.349523125 };
+  if (!servingUnits.includes(fromUnit) || !servingUnits.includes(toUnit)) throw new Error('Invalid serving unit.');
+  if (fromUnit !== toUnit) {
+    const from = grams[fromUnit];
+    const to = grams[toUnit];
+    if (from === undefined || to === undefined) throw new Error('These units need a food-specific conversion.');
+    return amount * from / to;
+  }
+  return amount;
+}
+
 export function calculateServing(input: FoodInput, amount: number, unit: ServingUnit = input.serving_unit) {
   const food = normalizeFood(input);
-  if (!Number.isFinite(amount) || amount <= 0 || amount > 100000) throw new Error('Enter a positive serving amount up to 100000.');
-  const grams: Partial<Record<ServingUnit, number>> = { g: 1, kg: 1000, oz: 28.349523125 };
-  let converted = amount;
-  if (unit !== food.serving_unit) {
-    const from = grams[unit];
-    const to = grams[food.serving_unit];
-    if (from === undefined || to === undefined) throw new Error('These units need a food-specific conversion.');
-    converted = amount * from / to;
-  }
+  const converted = convertServingAmount(amount, unit, food.serving_unit);
   const ratio = converted / food.serving_amount;
   return {
     calories: food.calories * ratio,

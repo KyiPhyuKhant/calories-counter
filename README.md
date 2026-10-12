@@ -2,7 +2,7 @@
 
 An iOS-first React Native app built with Expo, Expo Router, and strict TypeScript.
 The app currently contains a welcome screen, an editable profile and calorie
-goal calculator, a searchable food catalog, and local SQLite infrastructure.
+goal calculator, a searchable food catalog, and a daily food diary backed by SQLite.
 It does not require an account, server, or network connection to store data.
 
 ## Development
@@ -132,9 +132,10 @@ Nutrition is stored per declared serving amount/unit. Optional macros remain
 `NULL` when unknown, rather than being reported as zero. Serving calculations
 scale these values; mass conversions support grams, kilograms, and ounces.
 No density is assumed for milliliters, cups, pieces, or generic servings.
-Existing gram-based diary operations reject foods without a mass conversion;
-food tracking UI is not part of this step. Existing historical snapshots and
-food links survive the migration, and catalog edits do not rewrite snapshots.
+The legacy gram-based repository method requires a mass conversion; the daily
+diary accepts quantities in each food's declared unit or number of servings.
+Existing historical snapshots and food links survive the migration, and catalog
+edits do not rewrite snapshots.
 
 Custom duplicates are rejected for the same normalized name, serving amount,
 and unit. Preexisting duplicate records are preserved during migration. External
@@ -150,3 +151,33 @@ npm test
 npm run typecheck
 npm run lint
 ```
+
+## Daily diary
+
+Open **Open food diary** on the welcome screen. Use the previous/next controls,
+the native date picker, or Today to select a local calendar day. Each meal has an
+add button that opens the existing offline catalog. Select a food, enter an
+amount in its declared unit or a fractional number of servings, select a meal,
+and log it. Tap an entry to edit quantity, meal, or date; the trash button deletes
+the entry after confirmation. The diary displays each meal's calories and the
+daily total. No profile setup or account is required to log food.
+
+Migration 4 stores an immutable nutrition basis with the food name, serving
+amount/unit, optional macros, notes, source, and provider identity. Totals are
+derived from this snapshot and stored with the entry. Editing a diary entry uses
+its original snapshot, even after the catalog food changes or is deleted. Food
+selection is only needed for new entries. Plans are not included in diary totals.
+
+`entry_date` is an explicit `YYYY-MM-DD` calendar date, independent of the UTC
+audit timestamp. Local dates use device calendar components, not ISO timestamp
+slicing. Navigation uses calendar-day arithmetic across daylight-saving changes.
+The UI supports dates from 1900 through 2100. Legacy entries had only a timestamp:
+migration assigns their date using the device timezone once and their meal to
+Snacks, preserving their original gram nutrition rather than reading newer
+catalog values. Dates remain fixed when the user later changes timezone.
+
+Logging a food and creating the local profile if necessary are transactional.
+Quantity edits and recalculated totals are also committed together. Missing
+macro values remain unknown. Development samples remain labeled as unverified
+after logging. Tests cover meal/day totals, date separation, local midnights in
+Tokyo and Los Angeles, DST, migration rollback, historical edits and deletion.

@@ -119,7 +119,7 @@ test('migration 3 preserves legacy duplicates, food links and snapshots; failed 
   await db.execAsync(migrations[0].sql); await db.execAsync(migrations[1].sql); await db.execAsync('PRAGMA user_version = 2');
   await db.runAsync('INSERT INTO user_profiles (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)', 'p', 'User', 'old', 'old');
   for (const id of ['a', 'b']) await db.runAsync('INSERT INTO foods VALUES (?, ?, ?, ?, ?, ?, ?, ?)', id, 'Legacy oats', 200, 5, 30, 4, 'old', 'old');
-  await db.runAsync('INSERT INTO diary_entries VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 'diary', 'p', 'a', 'Historical oats', 100, 1, 2, 3, 50, 'old', 'old');
+  await db.runAsync('INSERT INTO diary_entries VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 'diary', 'p', 'a', 'Historical oats', 100, 1, 2, 3, 50, '2026-10-13T08:00:00.000Z', 'old');
   await db.runAsync('INSERT INTO planned_meals VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 'plan', 'p', 'b', 'Planned oats', 120, 2, 3, 4, 60, 'old', 'old');
   const original = db.execAsync;
   db.execAsync = async (sql) => { await original(sql); if (sql.includes('CREATE TABLE foods_new')) throw new Error('Interrupted rebuild'); };

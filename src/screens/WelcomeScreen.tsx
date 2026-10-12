@@ -29,6 +29,11 @@ export function WelcomeScreen() {
             Make room for a healthier relationship with your everyday choices.
           </Text>
         </View>
+        <Link href="/diary" asChild>
+          <Pressable accessibilityRole="button" style={styles.profileButton}>
+            <Text style={styles.profileButtonText}>Open food diary</Text>
+          </Pressable>
+        </Link>
         <Link href="/profile" asChild>
           <Pressable accessibilityRole="button" style={styles.profileButton}>
             <Text style={styles.profileButtonText}>Set up your profile</Text>
