@@ -14,7 +14,9 @@ export default function RootLayout() {
             headerShown: false,
             contentStyle: { backgroundColor: theme.colors.background },
           }}
-        />
+        >
+          <Stack.Screen name="profile" options={{ headerShown: true, title: 'Your profile', headerTintColor: theme.colors.accent }} />
+        </Stack>
       </DatabaseProvider>
     </>
   );

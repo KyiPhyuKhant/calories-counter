@@ -1,4 +1,5 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Link } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { theme } from '@/theme/theme';
@@ -28,6 +29,11 @@ export function WelcomeScreen() {
             Make room for a healthier relationship with your everyday choices.
           </Text>
         </View>
+        <Link href="/profile" asChild>
+          <Pressable accessibilityRole="button" style={styles.profileButton}>
+            <Text style={styles.profileButtonText}>Set up your profile</Text>
+          </Pressable>
+        </Link>
         <Text style={styles.footer}>A fresh perspective, every day.</Text>
       </ScrollView>
     </SafeAreaView>
@@ -35,6 +41,8 @@ export function WelcomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  profileButton: { backgroundColor: theme.colors.accent, borderRadius: 8, padding: 16, minHeight: 48, alignItems: 'center' },
+  profileButtonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
   screen: {
     flex: 1,
     backgroundColor: theme.colors.background,

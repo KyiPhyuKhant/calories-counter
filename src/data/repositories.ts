@@ -1,4 +1,5 @@
 import type { Database, SqlExecutor } from './database.ts';
+import { calculateCalorieGoal, type CalorieProfile } from '../domain/calorieGoal.ts';
 
 export interface Nutrition {
   name: string;
@@ -8,7 +9,20 @@ export interface Nutrition {
   fat_per_100g: number;
 }
 export interface Food extends Nutrition { id: string; created_at: string; updated_at: string }
-export interface Profile { id: string; name: string; height_cm: number | null; created_at: string; updated_at: string }
+export interface Profile {
+  id: string;
+  name: string;
+  height_cm: number | null;
+  sex: CalorieProfile['sex'] | null;
+  age: number | null;
+  current_weight_kg: number | null;
+  target_weight_kg: number | null;
+  activity_level: CalorieProfile['activity_level'] | null;
+  goal: CalorieProfile['goal'] | null;
+  manual_calorie_target: number | null;
+  created_at: string;
+  updated_at: string;
+}
 export interface FoodSnapshot extends Nutrition {
   id: string;
   profile_id: string;
@@ -66,6 +80,23 @@ export function createRepositories(db: Database, newId: () => string, now = () =
   return {
     profiles: {
       get: () => db.getFirstAsync<Profile>('SELECT * FROM user_profiles WHERE singleton = 1'),
+      async saveCalorieProfile(input: CalorieProfile) {
+        calculateCalorieGoal(input);
+        const time = now();
+        const row = await db.getFirstAsync<{ id: string }>(`
+          INSERT INTO user_profiles (id, name, height_cm, sex, age, current_weight_kg,
+            target_weight_kg, activity_level, goal, manual_calorie_target, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(singleton) DO UPDATE SET height_cm = excluded.height_cm, sex = excluded.sex,
+            age = excluded.age, current_weight_kg = excluded.current_weight_kg,
+            target_weight_kg = excluded.target_weight_kg, activity_level = excluded.activity_level,
+            goal = excluded.goal, manual_calorie_target = excluded.manual_calorie_target,
+            updated_at = excluded.updated_at RETURNING id`,
+        newId(), 'Local user', input.height_cm, input.sex, input.age, input.current_weight_kg,
+        input.target_weight_kg, input.activity_level, input.goal, input.manual_calorie_target, time, time);
+        if (!row) throw new Error('Profile could not be saved.');
+        return row.id;
+      },
       async save(input: { name: string; height_cm?: number | null }) {
         const height = input.height_cm ?? null;
         if (height !== null) positive(height);

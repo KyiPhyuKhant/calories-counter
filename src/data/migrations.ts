@@ -56,6 +56,19 @@ export const migrations = [{
     );
     CREATE INDEX weight_profile_time_idx ON weight_history(profile_id, measured_at, id);
   `,
+}, {
+  version: 2,
+  sql: `
+    ALTER TABLE user_profiles ADD COLUMN sex TEXT CHECK (sex IN ('female', 'male'));
+    ALTER TABLE user_profiles ADD COLUMN age INTEGER CHECK (age BETWEEN 18 AND 100 AND age = CAST(age AS INTEGER));
+    ALTER TABLE user_profiles ADD COLUMN current_weight_kg REAL CHECK (current_weight_kg BETWEEN 35 AND 300);
+    ALTER TABLE user_profiles ADD COLUMN target_weight_kg REAL CHECK (target_weight_kg BETWEEN 35 AND 300);
+    ALTER TABLE user_profiles ADD COLUMN activity_level TEXT CHECK (activity_level IN ('sedentary', 'light', 'moderate', 'active', 'very_active'));
+    ALTER TABLE user_profiles ADD COLUMN goal TEXT CHECK (goal IN ('lose', 'maintain', 'gain'));
+    ALTER TABLE user_profiles ADD COLUMN manual_calorie_target INTEGER CHECK (
+      manual_calorie_target BETWEEN 1200 AND 6000 AND manual_calorie_target = CAST(manual_calorie_target AS INTEGER)
+    );
+  `,
 }] as const;
 
 export async function initializeDatabase(db: Database) {

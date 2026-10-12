@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
 
-import { initializeDatabase } from '../src/data/migrations.ts';
+import { initializeDatabase, migrations } from '../src/data/migrations.ts';
 import { createRepositories } from '../src/data/repositories.ts';
 
 // Execute production SQL against real SQLite without loading React Native native modules.
@@ -46,7 +46,7 @@ test('initialization creates all tables, indexes and foreign keys; reruns preser
   const id = await repositories.profiles.save({ name: 'Local user', height_cm: 170 });
   await initializeDatabase(db);
   assert.equal((await repositories.profiles.get()).id, id);
-  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 1);
+  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 2);
   assert.equal((await db.getFirstAsync('PRAGMA foreign_keys')).foreign_keys, 1);
   const tables = await db.getAllAsync("SELECT name FROM sqlite_master WHERE type = 'table'");
   assert.deepEqual(tables.map((row) => row.name).sort(),
@@ -69,14 +69,14 @@ test('failed migrations roll back schema and version, then can retry', async (t)
   assert.equal(await db.getFirstAsync("SELECT name FROM sqlite_master WHERE type = 'table'"), null);
   db.execAsync = original;
   await initializeDatabase(db);
-  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 1);
+  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 2);
 });
 
 test('a future schema is rejected without rewriting its version', async (t) => {
   const { db } = await fixture(t);
-  await db.execAsync('PRAGMA user_version = 2');
+  await db.execAsync('PRAGMA user_version = 3');
   await assert.rejects(initializeDatabase(db), /newer version/);
-  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 2);
+  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 3);
 });
 
 test('profile saves retain one stable ID and food input is parameterized', async (t) => {
@@ -160,4 +160,66 @@ test('data persists after closing and reopening a local database', async () => {
     sqlite?.close();
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+const calorieProfile = {
+  sex: 'male', age: 30, height_cm: 180, current_weight_kg: 80,
+  target_weight_kg: 75, activity_level: 'moderate', goal: 'lose', manual_calorie_target: 2400,
+};
+
+test('migration upgrades a version 1 profile without losing ID or existing records', async (t) => {
+  const sqlite = new DatabaseSync(':memory:');
+  t.after(() => sqlite.close());
+  const db = adapt(sqlite);
+  await db.execAsync(migrations[0].sql);
+  await db.execAsync('PRAGMA user_version = 1');
+  await db.runAsync('INSERT INTO user_profiles (id, name, height_cm, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+    'existing-id', 'Existing user', 175, at, at);
+  const before = createRepositories(db, randomUUID);
+  const foodId = await before.foods.create(food);
+  const diaryId = await before.diary.add('existing-id', foodId, 50, at);
+  await initializeDatabase(db);
+  const r = createRepositories(db, randomUUID);
+  const profile = await r.profiles.get();
+  assert.equal(profile.id, 'existing-id');
+  assert.equal(profile.height_cm, 175);
+  assert.equal(profile.sex, null);
+  assert.equal((await r.diary.list('existing-id'))[0].id, diaryId);
+  assert.equal(await r.profiles.saveCalorieProfile(calorieProfile), 'existing-id');
+  const saved = await r.profiles.get();
+  assert.equal(saved.name, 'Existing user');
+  assert.equal(saved.created_at, at);
+  for (const [key, value] of Object.entries(calorieProfile)) assert.equal(saved[key], value);
+});
+
+test('failure during migration 2 preserves version 1 profile and rolls back new columns', async (t) => {
+  const sqlite = new DatabaseSync(':memory:');
+  t.after(() => sqlite.close());
+  const db = adapt(sqlite);
+  await db.execAsync(migrations[0].sql);
+  await db.execAsync('PRAGMA user_version = 1');
+  await db.runAsync('INSERT INTO user_profiles (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)', 'old', 'User', at, at);
+  const original = db.execAsync;
+  db.execAsync = async (sql) => {
+    await original(sql);
+    if (sql.includes('ADD COLUMN sex')) throw new Error('Upgrade interrupted');
+  };
+  await assert.rejects(initializeDatabase(db), /interrupted/);
+  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 1);
+  assert.equal((await db.getFirstAsync('SELECT id FROM user_profiles')).id, 'old');
+  assert.equal((await db.getAllAsync('PRAGMA table_info(user_profiles)')).some((column) => column.name === 'sex'), false);
+  db.execAsync = original;
+  await initializeDatabase(db);
+  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 2);
+});
+
+test('profile edits persist all inputs and reject unsafe overrides without changing saved data', async (t) => {
+  const { repositories: r } = await fixture(t);
+  const id = await r.profiles.saveCalorieProfile(calorieProfile);
+  assert.equal(await r.profiles.saveCalorieProfile({ ...calorieProfile, age: 31, manual_calorie_target: null }), id);
+  const saved = await r.profiles.get();
+  assert.equal(saved.age, 31);
+  assert.equal(saved.manual_calorie_target, null);
+  await assert.rejects(r.profiles.saveCalorieProfile({ ...calorieProfile, manual_calorie_target: 500 }), /target/);
+  assert.equal((await r.profiles.get()).manual_calorie_target, null);
 });

@@ -1,7 +1,8 @@
 # Calorie Counter
 
 An iOS-first React Native app built with Expo, Expo Router, and strict TypeScript.
-The app currently contains a welcome screen and local SQLite infrastructure.
+The app currently contains a welcome screen, an editable profile and calorie
+goal calculator, and local SQLite infrastructure.
 It does not require an account, server, or network connection to store data.
 
 ## Development
@@ -40,6 +41,7 @@ npx expo export --platform ios
 - `src/app/`: Expo Router route entries and root navigation layout.
 - `src/screens/`: Screen content, kept separate from navigation.
 - `src/theme/`: Shared colors and spacing.
+- `src/domain/`: Pure calorie equations, validation, and target guardrails.
 - `src/data/`: Database initialization, versioned migrations, typed repositories,
   and the provider that makes repositories available with `useRepositories()`.
 - `tests/`: Real SQLite verification of migrations and repository behavior.
@@ -66,3 +68,48 @@ Profile deletion is restricted while related records exist.
 
 Tests execute the production migration SQL and repository queries through a
 Node SQLite adapter. They do not exercise Expo's native bridge or simulator UI.
+
+## Calorie estimates
+
+Open **Set up your profile** on the welcome screen to enter or edit your profile.
+The profile and optional manual target are saved locally. Migration 2 preserves
+existing profile IDs and leaves new fields unset until the user completes them.
+Suggested targets are derived from the saved inputs, not stored as stale totals.
+
+Mifflin-St Jeor estimates resting energy expenditure (shown as estimated BMR):
+`10 * currentWeightKg + 6.25 * heightCm - 5 * age + sexConstant`, where the
+constant is `+5` for the male equation and `-161` for the female equation.
+TDEE is that estimate multiplied by the selected activity factor. These are
+predictions, not measured calorie burn, and target weight does not enter them.
+
+| Activity | Factor | Approximate description |
+| --- | --- | --- |
+| Sedentary | 1.2 | Little exercise |
+| Light | 1.375 | Exercise 1-3 days/week |
+| Moderate | 1.55 | Exercise 3-5 days/week |
+| Very active | 1.725 | Hard exercise 6-7 days/week |
+| Extremely active | 1.9 | Physical work and intensive training |
+
+App policy: loss subtracts the smaller of 15% of TDEE or 500 kcal/day;
+maintenance uses TDEE; gain adds the smaller of 10% or 300 kcal/day.
+Targets are rounded to whole kcal and constrained to a range. The lower bound
+is the highest of estimated BMR, 80% of TDEE, TDEE minus 500, and an intake floor
+of 1200 for the female equation or 1500 for the male equation. Low current BMI
+also raises the lower bound to TDEE. The upper bound is the lower of 6000 or
+TDEE plus the smaller of 15% or 500. Manual overrides follow the same limits;
+switching off manual adjustment restores the suggestion.
+
+These conservative app rules are not individually prescribed medical limits.
+The calculator supports ages 18-100, heights 120-230 cm, and weights 35-300 kg.
+It rejects nonfinite numbers, fractional ages, contradictory goal directions,
+targets below an adult BMI screening threshold of 18.5, and weight-loss goals
+at a low current BMI. Cases outside the calorie range require individual advice.
+It is not intended for pregnancy or breastfeeding. BMI is only a screening
+guardrail, and calculated targets cannot guarantee clinical suitability.
+
+Sources:
+- [Original Mifflin-St Jeor study](https://pubmed.ncbi.nlm.nih.gov/2305711/).
+- [Activity factor table in a clinical nutrition tutorial](https://doi.org/10.1016/j.clnesp.2024.07.1055).
+- [AHA/ACC/TOS adult weight-management guideline](https://pmc.ncbi.nlm.nih.gov/articles/PMC5819889/).
+- [CDC adult BMI categories](https://www.cdc.gov/bmi/adult-calculator/bmi-categories.html).
+- [NIDDK calculator population guidance](https://www.niddk.nih.gov/health-information/weight-management/body-weight-planner).
