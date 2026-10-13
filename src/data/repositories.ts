@@ -1,9 +1,10 @@
-import type { Database, SqlExecutor } from './database.ts';
+import type { Database } from './database.ts';
 import { calculateCalorieGoal, type CalorieProfile } from '../domain/calorieGoal.ts';
 import { createFoodRepository } from './foodRepository.ts';
 import { createDiaryRepository } from './diaryRepository.ts';
 import { summarizeDashboard } from '../domain/dashboard.ts';
 import { validateCalendarDate, type DiaryEntry } from '../domain/diary.ts';
+import { createPlanRepository } from './planRepository.ts';
 
 export interface Nutrition {
   name: string;
@@ -33,7 +34,6 @@ export interface FoodSnapshot extends Nutrition {
   amount_g: number;
   created_at: string;
 }
-export interface PlannedMeal extends FoodSnapshot { planned_at: string }
 export interface WeightEntry { id: string; profile_id: string; weight_kg: number; measured_at: string; created_at: string }
 
 function positive(value: number) {
@@ -53,28 +53,6 @@ async function requireChanged(result: Promise<{ changes: number }>) {
 }
 
 export function createRepositories(db: Database, newId: () => string, now = () => new Date().toISOString()) {
-  async function insertSnapshot(
-    tx: SqlExecutor, table: 'planned_meals',
-    profileId: string, foodId: string, amountG: number, at: string,
-  ) {
-    positive(amountG);
-    const time = timestamp(at);
-    const id = newId();
-    const timeColumn = 'planned_at';
-    // One statement copies the catalog snapshot atomically. Identifiers are internal constants.
-    const result = await tx.runAsync(`
-      INSERT INTO ${table} (id, profile_id, food_id, name, calories_per_100g,
-        protein_per_100g, carbs_per_100g, fat_per_100g, amount_g, ${timeColumn}, created_at)
-      SELECT ?, ?, id, name, calories_per_100g, protein_per_100g, carbs_per_100g,
-        fat_per_100g, ?, ?, ? FROM foods WHERE id = ? AND calories_per_100g IS NOT NULL`,
-    id, profileId, amountG, time, now(), foodId);
-    if (result.changes !== 1) {
-      const food = await tx.getFirstAsync('SELECT id FROM foods WHERE id = ?', foodId);
-      throw new Error(food ? 'This food needs a gram conversion before use in the diary.' : 'Food not found.');
-    }
-    return id;
-  }
-
   const repositories = {
     profiles: {
       get: () => db.getFirstAsync<Profile>('SELECT * FROM user_profiles WHERE singleton = 1'),
@@ -114,13 +92,7 @@ export function createRepositories(db: Database, newId: () => string, now = () =
     },
     foods: createFoodRepository(db, newId, now),
     diary: createDiaryRepository(db, newId, now),
-    plans: {
-      add: (profileId: string, foodId: string, amountG: number, plannedAt: string) =>
-        insertSnapshot(db, 'planned_meals', profileId, foodId, amountG, plannedAt),
-      list: (profileId: string) => db.getAllAsync<PlannedMeal>(
-        'SELECT * FROM planned_meals WHERE profile_id = ? ORDER BY planned_at, id', profileId),
-      remove: (id: string) => requireChanged(db.runAsync('DELETE FROM planned_meals WHERE id = ?', id)),
-    },
+    plans: createPlanRepository(db, newId, now),
     weights: {
       async add(profileId: string, weightKg: number, measuredAt: string) {
         positive(weightKg);
@@ -155,6 +127,12 @@ export function createRepositories(db: Database, newId: () => string, now = () =
     diary: { ...repositories.diary,
       add: observe(repositories.diary.add), addEntry: observe(repositories.diary.addEntry),
       update: observe(repositories.diary.update), remove: observe(repositories.diary.remove),
+    },
+    plans: { ...repositories.plans,
+      add: observe(repositories.plans.add), addEntry: observe(repositories.plans.addEntry),
+      update: observe(repositories.plans.update), remove: observe(repositories.plans.remove),
+      copyDay: observe(repositories.plans.copyDay), markEaten: observe(repositories.plans.markEaten),
+      markMealEaten: observe(repositories.plans.markMealEaten),
     },
     dashboard: {
       async getDay(date: string) {

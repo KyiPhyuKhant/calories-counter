@@ -2,8 +2,9 @@ import {
   calculateDiaryNutrition, localCalendarDate, validateCalendarDate, validateDiaryInput,
   type DiaryEntry, type DiaryInput,
 } from '../domain/diary.ts';
-import { convertServingAmount, nutritionPer100g, type Food } from '../domain/food.ts';
+import { convertServingAmount, type Food } from '../domain/food.ts';
 import type { Database, SqlExecutor } from './database.ts';
+import { writeNutritionSnapshot } from './snapshotWriter.ts';
 
 export function createDiaryRepository(db: Database, newId: () => string, now: () => string) {
   async function profileForLogging(tx: SqlExecutor, requested?: string) {
@@ -21,23 +22,8 @@ export function createDiaryRepository(db: Database, newId: () => string, now: ()
   }
 
   async function insert(tx: SqlExecutor, food: Food, input: DiaryInput, requestedProfile?: string, consumedAt = now()) {
-    const nutrition = calculateDiaryNutrition(food, input);
     const profile = await profileForLogging(tx, requestedProfile);
-    const per100g = nutritionPer100g(food);
-    const amountG = per100g ? convertServingAmount(nutrition.amount, food.serving_unit, 'g') : null;
-    const id = newId();
-    const time = now();
-    await tx.runAsync(`INSERT INTO diary_entries (id, profile_id, food_id, name, source, provider, external_id,
-      serving_amount, serving_unit, calories, protein, carbohydrates, fat, notes,
-      entry_date, meal, quantity, quantity_mode, total_calories, total_protein, total_carbohydrates, total_fat,
-      consumed_at, created_at, updated_at, amount_g, calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    id, profile, food.id, food.name, food.source, food.provider, food.external_id,
-    food.serving_amount, food.serving_unit, food.calories, food.protein, food.carbohydrates, food.fat, food.notes,
-    input.date, input.meal, input.quantity, input.quantity_mode, nutrition.calories,
-    nutrition.protein, nutrition.carbohydrates, nutrition.fat, consumedAt, time, time,
-    amountG, per100g?.calories ?? null, per100g?.protein ?? null, per100g?.carbohydrates ?? null, per100g?.fat ?? null);
-    return id;
+    return writeNutritionSnapshot(tx, 'diary_entries', food, food.id, profile, input, newId(), now(), consumedAt);
   }
 
   async function addEntry(foodId: string, input: DiaryInput, profileId?: string) {

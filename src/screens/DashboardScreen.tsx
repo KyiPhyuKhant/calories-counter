@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ChevronLeft, ChevronRight, Plus, BookOpen, Search, UserRound } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Plus, BookOpen, Search, UserRound, CalendarClock } from 'lucide-react-native';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -66,6 +66,9 @@ export function DashboardScreen() {
         <DiaryIconButton icon={ChevronRight} label="Next day" disabled={date === '2100-12-31'} onPress={() => selectDate(shiftCalendarDate(date, 1))} />
       </View>
       <Pressable accessibilityRole="button" onPress={() => selectDate(localCalendarDate())} style={styles.today}><Text style={styles.link}>Today</Text></Pressable>
+      <Pressable accessibilityRole="button" style={styles.planLink} onPress={() => router.push('/plans')}>
+        <CalendarClock size={22} color={theme.colors.accent} /><Text style={styles.link}>Meal plans</Text>
+      </Pressable>
       {error ? <View style={foodStyles.field}>
         <Text accessibilityRole="alert" style={foodStyles.error}>{error}</Text>
         <Pressable accessibilityRole="button" style={foodStyles.button} onPress={() => setRetry((current) => current + 1)}><Text style={foodStyles.buttonText}>Try again</Text></Pressable>
@@ -117,6 +120,7 @@ export function DashboardScreen() {
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   today: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start', paddingHorizontal: 12 },
+  planLink: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12 },
   link: { color: theme.colors.accent, fontSize: 17, fontWeight: '600' },
   summary: { gap: 16, padding: 20, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8 },
   balance: { color: theme.colors.accent, fontSize: 30, lineHeight: 38, fontWeight: '700' },

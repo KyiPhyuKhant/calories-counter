@@ -8,17 +8,19 @@ import { FoodField, foodStyles as styles } from '@/components/foodUi';
 import { useRepositories } from '@/data/DatabaseProvider';
 import { calculateDiaryNutrition, localCalendarDate, meals, validateCalendarDate, type DiaryEntry, type DiaryInput, type Meal, type QuantityMode } from '@/domain/diary';
 import type { Food } from '@/domain/food';
+import type { PlannedFood } from '@/data/planRepository';
 import { theme } from '@/theme/theme';
 
 function scalar(value?: string | string[]) { return Array.isArray(value) ? value[0] : value; }
 
-export function DiaryEditorScreen() {
+export function DiaryEditorScreen({ planning = false }: { planning?: boolean }) {
   const params = useLocalSearchParams<{ id?: string; foodId?: string; date?: string; meal?: string }>();
   const id = scalar(params.id);
   const foodId = scalar(params.foodId);
-  const { diary, foods } = useRepositories();
+  const { diary, plans, foods } = useRepositories();
+  const entries = planning ? plans : diary;
   const router = useRouter();
-  const [snapshot, setSnapshot] = useState<Food | DiaryEntry | null>(null);
+  const [snapshot, setSnapshot] = useState<Food | DiaryEntry | PlannedFood | null>(null);
   const [date, setDate] = useState(() => scalar(params.date) ?? localCalendarDate());
   const [meal, setMeal] = useState<Meal>(() => meals.includes(scalar(params.meal) as Meal) ? scalar(params.meal) as Meal : 'snacks');
   const [quantity, setQuantity] = useState('1');
@@ -33,8 +35,9 @@ export function DiaryEditorScreen() {
     let active = true;
     async function load() {
       validateCalendarDate(scalar(params.date) ?? localCalendarDate());
-      const result = id ? await diary.get(id) : foodId ? await foods.get(foodId) : null;
-      if (!result) throw new Error(id ? 'Diary entry not found.' : 'Select a food from the catalog.');
+      const result = id ? await entries.get(id) : foodId ? await foods.get(foodId) : null;
+      if (!result) throw new Error(id ? 'Entry not found.' : 'Select a food from the catalog.');
+      if ('eaten_at' in result && result.eaten_at) throw new Error('Eaten plans are read-only. Edit the consumed entry in the diary instead.');
       if (!active) return;
       setSnapshot(result);
       if ('entry_date' in result) { setDate(result.entry_date); setMeal(result.meal); setQuantity(result.quantity.toString()); setMode(result.quantity_mode); }
@@ -42,7 +45,7 @@ export function DiaryEditorScreen() {
     }
     load().catch((failure) => { if (active) { setLoadError(failure instanceof Error ? failure.message : 'Could not load this entry.'); setLoading(false); } });
     return () => { active = false; };
-  }, [diary, foods, id, foodId, params.date, attempt]);
+  }, [entries, foods, id, foodId, params.date, attempt]);
 
   const input: DiaryInput = { date, meal, quantity: /^\d+(\.\d+)?$/.test(quantity.trim()) ? Number(quantity) : NaN, quantity_mode: mode };
   let preview: ReturnType<typeof calculateDiaryNutrition> | null = null;
@@ -55,9 +58,9 @@ export function DiaryEditorScreen() {
     if (!preview || !snapshot) { setError(validation || 'Select a food first.'); return; }
     setSaving(true); setError('');
     try {
-      if (id) await diary.update(id, input);
-      else await diary.addEntry(snapshot.id, input);
-      router.dismissTo({ pathname: '/diary', params: { date } });
+      if (id) await entries.update(id, input);
+      else await entries.addEntry(snapshot.id, input);
+      router.dismissTo({ pathname: planning ? '/plans' : '/diary', params: { date } });
     } catch { setError('Could not save this entry. Your edits are still here; please try again.'); }
     finally { setSaving(false); }
   }
@@ -71,7 +74,7 @@ export function DiaryEditorScreen() {
         <Text accessibilityRole="header" style={styles.title}>{snapshot.name}</Text>
         <Text style={styles.body}>{caloriesLabel(snapshot.calories)} per {snapshot.serving_amount} {snapshot.serving_unit}</Text>
         {snapshot.source === 'bundled' ? <Text style={styles.error}>Invented development values, not verified nutritional data.</Text> : null}
-        {id ? <Text style={styles.detail}>Nutrition saved when this food was logged.</Text> : null}
+        {id ? <Text style={styles.detail}>Nutrition saved when this food was {planning ? 'planned' : 'logged'}.</Text> : null}
         <View style={styles.field}><Text style={styles.label}>Date</Text><DiaryDateField value={date} onChange={setDate} disabled={saving} /></View>
         <DiaryMealField value={meal} onChange={setMeal} disabled={saving} />
         <View style={diaryStyles.controls}>
@@ -91,7 +94,7 @@ export function DiaryEditorScreen() {
           <Text style={styles.detail}>{Number(preview.amount.toFixed(3))} {snapshot.serving_unit}</Text>
         </View> : null}
         <Pressable accessibilityRole="button" disabled={saving} style={[styles.button, saving ? styles.disabled : undefined]} onPress={save}>
-          <Text style={styles.buttonText}>{saving ? 'Saving...' : id ? 'Save changes' : 'Log food'}</Text></Pressable>
+          <Text style={styles.buttonText}>{saving ? 'Saving...' : id ? 'Save changes' : planning ? 'Add to plan' : 'Log food'}</Text></Pressable>
         {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       </ScrollView>
     </KeyboardAvoidingView>

@@ -63,7 +63,7 @@ test('persisted dashboard excludes plans and other dates, and committed mutation
   await r.diary.update(id, { ...input, quantity: 5 });
   assert.equal((await r.dashboard.getDay(input.date)).progress.over, 400);
   await r.diary.remove(id);
-  assert.equal(notifications, 6);
+  assert.equal(notifications, 8);
   assert.equal((await r.dashboard.getDay(input.date)).totals.total, 0);
   assert.equal((await r.dashboard.getDay('2026-10-14')).totals.total, 500);
   const beforeFailure = notifications;

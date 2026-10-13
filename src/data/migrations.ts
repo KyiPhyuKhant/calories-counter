@@ -197,6 +197,58 @@ export const migrations = [{
     CREATE INDEX diary_profile_date_meal_idx ON diary_entries(profile_id, entry_date, meal, created_at, id);
     CREATE INDEX diary_food_idx ON diary_entries(food_id);
   `,
+}, {
+  version: 5,
+  sql: `
+    CREATE TABLE plans_v5 (
+      id TEXT PRIMARY KEY NOT NULL CHECK (length(id) > 0),
+      profile_id TEXT NOT NULL REFERENCES user_profiles(id) ON DELETE RESTRICT,
+      food_id TEXT REFERENCES foods(id) ON DELETE SET NULL,
+      name TEXT NOT NULL CHECK (length(trim(name)) > 0),
+      source TEXT NOT NULL CHECK (source IN ('bundled', 'external', 'custom', 'unknown')),
+      provider TEXT, external_id TEXT,
+      serving_amount REAL NOT NULL CHECK (serving_amount > 0),
+      serving_unit TEXT NOT NULL CHECK (serving_unit IN ('g', 'kg', 'oz', 'ml', 'cup', 'piece', 'serving')),
+      calories REAL NOT NULL CHECK (calories >= 0),
+      protein REAL CHECK (protein >= 0), carbohydrates REAL CHECK (carbohydrates >= 0), fat REAL CHECK (fat >= 0), notes TEXT,
+      entry_date TEXT NOT NULL CHECK (length(entry_date) = 10 AND date(entry_date, '+0 days') IS NOT NULL AND date(entry_date, '+0 days') = entry_date),
+      meal TEXT NOT NULL CHECK (meal IN ('breakfast', 'lunch', 'dinner', 'snacks')),
+      quantity REAL NOT NULL CHECK (quantity > 0),
+      quantity_mode TEXT NOT NULL CHECK (quantity_mode IN ('amount', 'servings')),
+      total_calories REAL NOT NULL CHECK (total_calories >= 0),
+      total_protein REAL CHECK (total_protein >= 0), total_carbohydrates REAL CHECK (total_carbohydrates >= 0), total_fat REAL CHECK (total_fat >= 0),
+      planned_at TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+      amount_g REAL CHECK (amount_g > 0), calories_per_100g REAL CHECK (calories_per_100g >= 0),
+      protein_per_100g REAL CHECK (protein_per_100g >= 0), carbs_per_100g REAL CHECK (carbs_per_100g >= 0), fat_per_100g REAL CHECK (fat_per_100g >= 0),
+      eaten_at TEXT, eaten_date TEXT CHECK (eaten_date IS NULL OR (date(eaten_date, '+0 days') IS NOT NULL AND date(eaten_date, '+0 days') = eaten_date)),
+      diary_entry_id TEXT UNIQUE REFERENCES diary_entries(id) ON DELETE SET NULL,
+      CHECK ((eaten_at IS NULL AND eaten_date IS NULL AND diary_entry_id IS NULL) OR (eaten_at IS NOT NULL AND eaten_date IS NOT NULL))
+    );
+    INSERT INTO plans_v5 (id, profile_id, food_id, name, source, provider, external_id,
+      serving_amount, serving_unit, calories, protein, carbohydrates, fat,
+      entry_date, meal, quantity, quantity_mode, total_calories, total_protein, total_carbohydrates, total_fat,
+      planned_at, created_at, updated_at, amount_g, calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g)
+    SELECT p.id, p.profile_id, p.food_id, p.name, coalesce(f.source, 'unknown'), f.provider, f.external_id,
+      100, 'g', p.calories_per_100g, p.protein_per_100g, p.carbs_per_100g, p.fat_per_100g,
+      substr(p.planned_at, 1, 10), 'snacks', p.amount_g, 'amount',
+      p.calories_per_100g * p.amount_g / 100, p.protein_per_100g * p.amount_g / 100,
+      p.carbs_per_100g * p.amount_g / 100, p.fat_per_100g * p.amount_g / 100,
+      p.planned_at, p.created_at, p.created_at, p.amount_g,
+      p.calories_per_100g, p.protein_per_100g, p.carbs_per_100g, p.fat_per_100g
+      FROM planned_meals p LEFT JOIN foods f ON f.id = p.food_id;
+    DROP TABLE planned_meals;
+    ALTER TABLE plans_v5 RENAME TO planned_meals;
+    CREATE INDEX plans_profile_date_meal_idx ON planned_meals(profile_id, entry_date, meal, created_at, id);
+    CREATE INDEX plans_food_idx ON planned_meals(food_id);
+    CREATE TRIGGER plans_eaten_update BEFORE UPDATE ON planned_meals WHEN old.eaten_at IS NOT NULL
+      AND (new.eaten_at IS NOT old.eaten_at OR new.eaten_date IS NOT old.eaten_date OR
+        new.entry_date IS NOT old.entry_date OR new.meal IS NOT old.meal OR
+        new.quantity IS NOT old.quantity OR new.quantity_mode IS NOT old.quantity_mode OR
+        new.total_calories IS NOT old.total_calories)
+      BEGIN SELECT RAISE(ABORT, 'Eaten plans are read-only'); END;
+    CREATE TRIGGER plans_eaten_delete BEFORE DELETE ON planned_meals WHEN old.eaten_at IS NOT NULL
+      BEGIN SELECT RAISE(ABORT, 'Eaten plans are retained as history'); END;
+  `,
 }] as const;
 
 export async function initializeDatabase(db: Database) {
@@ -231,6 +283,11 @@ export async function initializeDatabase(db: Database) {
             // timezone once, then retain that calendar date when the user travels.
             for (const entry of entries) await tx.runAsync('UPDATE diary_entries SET entry_date = ? WHERE id = ?',
               localCalendarDate(new Date(entry.consumed_at)), entry.id);
+          }
+          if (migration.version === 5) {
+            const plans = await tx.getAllAsync<{ id: string; planned_at: string }>('SELECT id, planned_at FROM planned_meals');
+            for (const plan of plans) await tx.runAsync('UPDATE planned_meals SET entry_date = ? WHERE id = ?',
+              localCalendarDate(new Date(plan.planned_at)), plan.id);
           }
           // Only trusted migration constants are interpolated, never user input.
           await tx.execAsync(`PRAGMA user_version = ${migration.version}`);

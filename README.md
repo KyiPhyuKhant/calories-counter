@@ -2,7 +2,8 @@
 
 An iOS-first React Native app built with Expo, Expo Router, and strict TypeScript.
 The app currently contains a daily dashboard, an editable profile and calorie
-goal calculator, a searchable food catalog, and a daily food diary backed by SQLite.
+goal calculator, a searchable food catalog, a daily food diary, and future meal
+planning backed by SQLite.
 It does not require an account, server, or network connection to store data.
 
 ## Development
@@ -201,3 +202,34 @@ Returning to it also reloads persisted data. Loading failures offer a retry and
 outdated asynchronous reads cannot replace a newer date's result. Dashboard tests
 cover all three target states, manual overrides, date and plan exclusion, and
 refresh notifications for additions, edits, deletions, and failed writes.
+
+## Meal planning
+
+Open **Meal plans** on the dashboard. The planner starts on tomorrow; its date
+picker and previous/next controls also allow viewing earlier plans. Each meal
+accepts catalog foods with amounts or fractional servings. Planned-day and meal
+totals include every planned item, including items subsequently marked eaten,
+and compare against the current saved profile target. They are never consumed totals.
+
+Migration 5 upgrades legacy gram plans to explicit local dates and serving
+snapshots without changing their IDs or nutrition. New plans snapshot the food's
+name, source, notes, serving basis and optional nutrition. Editing uses the saved
+basis, not the current catalog. Unconsumed items can be edited or deleted.
+
+The copy button copies a source day into an empty destination, with new IDs and
+uneaten status. It preserves original quantities and snapshots, even for eaten
+items or deleted catalog foods. Copying is atomic; occupied destinations are
+rejected to avoid accidental duplication, and the source plan is untouched.
+
+The meal's check button opens a confirmation with an explicit date eaten, defaulting
+to today. Future consumption dates are rejected. All pending foods in that meal
+are logged in one transaction using their planned snapshots. Each plan receives
+a durable eaten timestamp/date and a unique link to its diary entry. Repeated
+requests skip eaten items, including after app restart. The original plan stays
+read-only as history; its consumed entries remain editable in the diary.
+Deleting a diary entry clears its link but retains the eaten receipt, so tapping
+the original plan again cannot accidentally re-log it. There is no automatic
+conversion when a planned date arrives.
+
+Tests cover planning CRUD, snapshot copies, day/meal separation, conversion
+idempotency, transaction rollback, migration preservation, and reopen persistence.
