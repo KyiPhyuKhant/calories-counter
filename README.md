@@ -141,9 +141,8 @@ edits do not rewrite snapshots.
 Custom duplicates are rejected for the same normalized name, serving amount,
 and unit. Preexisting duplicate records are preserved during migration. External
 foods are deduplicated by provider and provider ID, keeping stable local IDs.
-`src/data/foodProvider.ts` defines a future integration contract and the food
-repository can persist supplied external records for offline search. No live
-provider, USDA connection, online search, or API credentials are implemented.
+The USDA integration uses `src/data/foodProvider.ts`; selected external foods
+are cached through the same repository for offline search. See setup below.
 
 To verify search, custom-food CRUD, migration preservation, and serving math:
 
@@ -274,3 +273,85 @@ the history view uses the dated target record. Targets remain estimates.
 Tests cover date ranges across DST, leap months and years, missing versus zero
 logs, dated targets, all comparison states, weight CRUD and duplicate-day means,
 profile independence, transactional rollback, migrations, and reopen persistence.
+
+## USDA online foods
+
+The catalog's **USDA online** mode searches USDA FoodData Central through a small
+Node proxy. Saved and custom foods remain offline and do not require the proxy.
+Online queries and selected FDC IDs are sent to USDA; profile, weight, diary and
+plan data are not sent. Search is explicit, not performed on every keystroke.
+
+### Configuration
+
+Obtain a private key from [USDA's key signup](https://fdc.nal.usda.gov/api-key-signup/).
+USDA requires keys to remain private: never use `EXPO_PUBLIC_USDA_API_KEY`, commit
+a key, or embed it in an app build. The proxy alone reads the ignored server file:
+
+```dotenv
+# .env.server.local (ignored; server only)
+USDA_API_KEY=<your-private-key>
+FOOD_API_HOST=127.0.0.1
+FOOD_API_PORT=4111
+```
+
+The app reads only a nonsecret proxy address from `.env.local`:
+
+```dotenv
+EXPO_PUBLIC_FOOD_API_URL=http://127.0.0.1:4111
+```
+
+Run `npm run food-api` and, in another terminal, `npm run ios`. Restart Expo after
+changing configuration. The localhost URL works in the iOS simulator. For an
+iPhone on a trusted LAN, explicitly bind `FOOD_API_HOST=0.0.0.0` and use the Mac's
+LAN IP in the app's proxy URL. Do not expose this development proxy to the public
+internet. Production builds require an HTTPS proxy with deployment-side access
+controls and abuse protection; those deployment controls are not supplied here.
+No key is needed in Expo Go or on the phone. Missing configuration leaves the
+online mode unavailable and the local catalog usable.
+
+### Data and limits
+
+This stage supports Foundation, SR Legacy, and Survey (FNDDS) foods. Search shows
+the first 20 provider matches with supported calorie data; refine the query for
+other results. Branded/Experimental foods are excluded rather than assuming a
+nutrition basis or density. Required energy uses USDA kcal nutrient 1008, then
+Atwater specific 2048 or general 2047 when available. Missing energy is not
+invented; unknown macros remain null. Results initially use the 100-g basis.
+Selecting a result fetches full details; a reported gram-weight portion, when
+available, becomes the serving basis and scales all nutrients consistently.
+Otherwise the basis remains 100 g. Provider portion descriptions and source links
+are retained in SQLite notes. Cached provider IDs are unique, and refreshing a
+cached food does not rewrite existing diary or plan snapshots.
+
+The client times out after 12 seconds; the proxy times out after 10. Cancellation
+and stale-response guards protect search results. Empty results, malformed data,
+network failures, invalid keys, and rate limits have distinct handling. Retry is
+manual, and rate-limit cooldowns are honored. The development proxy also limits
+aggregate requests to 500/hour in memory. Restarting it resets that local limit;
+USDA's limit still applies. USDA documents a normal 1,000/hour/IP limit, and its
+public exploration credential has much lower limits. Use a registered private
+key for ongoing use. See the [API guide](https://fdc.nal.usda.gov/api-guide/) and
+[api.data.gov key/rate guidance](https://api.data.gov/docs/developer-manual/).
+
+USDA data are public-domain [CC0](https://fdc.nal.usda.gov/api-guide/#licensing).
+Online and cached foods identify USDA FoodData Central; source links and FDC IDs
+remain attached. Nutrition normalization follows the [Foundation Foods
+documentation](https://fdc.nal.usda.gov/Foundation_Foods_Documentation/).
+
+### Verification
+
+`npm test` uses explicitly synthetic protocol fixtures, never presented as USDA
+data. It covers mapping, portions, missing nutrients, errors, cancellation,
+timeouts, key isolation, proxy limits and offline-cache deduplication. Live checks
+are separate and require valid server configuration:
+
+```sh
+npm run test:provider:live
+```
+
+That command makes two real USDA requests (search/details) and verifies caching
+in a temporary in-memory SQLite database. It does not touch app data or print the
+key. During Step 9, this pipeline was verified using USDA's documented public
+exploration credential. No registered private key or deployed production proxy
+was available; configure your own key and reachable proxy before using online
+search normally.

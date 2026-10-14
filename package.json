@@ -6,6 +6,8 @@
   "scripts": {
     "start": "expo start",
     "ios": "expo start --ios",
+    "food-api": "node --env-file-if-exists=.env.server.local server/start.mjs",
+    "test:provider:live": "node --env-file-if-exists=.env.server.local scripts/test-food-provider-live.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --test tests/*.test.mjs",
     "lint": "expo lint"

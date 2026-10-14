@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -7,10 +7,13 @@ import { foodSourceLabel, foodStyles as styles } from '@/components/foodUi';
 import { useRepositories } from '@/data/DatabaseProvider';
 import type { Food } from '@/domain/food';
 import { theme } from '@/theme/theme';
+import { OnlineFoodSearch } from './OnlineFoodSearch';
 
 export function FoodCatalogScreen({ onSelect }: { onSelect?: (food: Food) => void } = {}) {
   const { foods } = useRepositories();
   const router = useRouter();
+  const params = useLocalSearchParams<{ source?: string }>();
+  const [mode, setMode] = useState<'saved' | 'online'>(() => params.source === 'usda' ? 'online' : 'saved');
   const [query, setQuery] = useState('');
   const [items, setItems] = useState<Food[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,6 +24,7 @@ export function FoodCatalogScreen({ onSelect }: { onSelect?: (food: Food) => voi
   const generation = useRef(0);
 
   useFocusEffect(useCallback(() => {
+    if (mode === 'online') return;
     const request = ++generation.current;
     const timer = setTimeout(() => {
       setLoading(true); setError(''); setMoreLoading(false);
@@ -34,7 +38,7 @@ export function FoodCatalogScreen({ onSelect }: { onSelect?: (food: Food) => voi
     }, 200);
     return () => { clearTimeout(timer); generation.current++; };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- Explicit retry must restart the focus query.
-  }, [foods, query, retry]));
+  }, [foods, query, retry, mode]));
 
   async function loadMore() {
     if (loading || moreLoading) return;
@@ -49,15 +53,19 @@ export function FoodCatalogScreen({ onSelect }: { onSelect?: (food: Food) => voi
 
   return <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.screen}>
     <View style={local.header}>
-      <TextInput accessibilityLabel="Search foods by name" placeholder="Search foods" value={query} maxLength={120}
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {(['saved', 'online'] as const).map((choice) => <Pressable key={choice} accessibilityRole="radio" accessibilityState={{ checked: mode === choice }}
+          style={[styles.option, { flex: 1 }, mode === choice && styles.selected]} onPress={() => { if (choice !== mode) { setMode(choice); setLoading(true); } }}><Text style={styles.body}>{choice === 'saved' ? 'Saved foods' : 'USDA online'}</Text></Pressable>)}
+      </View>
+      {mode === 'saved' ? <TextInput accessibilityLabel="Search foods by name" placeholder="Search foods" value={query} maxLength={120}
         onChangeText={(value) => { setLoading(true); setQuery(value); }} autoCorrect={false}
-        returnKeyType="search" clearButtonMode="while-editing" style={styles.input} />
+        returnKeyType="search" clearButtonMode="while-editing" style={styles.input} /> : null}
       <Pressable accessibilityRole="button" style={styles.button} onPress={() => router.push('/foods/edit')}>
         <Text style={styles.buttonText}>Add custom food</Text>
       </Pressable>
-      <Text style={styles.detail}>Offline catalog. Demo foods contain invented, unverified values.</Text>
+      {mode === 'saved' ? <Text style={styles.detail}>Offline catalog. Demo foods contain invented, unverified values.</Text> : null}
     </View>
-    <FlatList data={loading ? [] : items} keyExtractor={(food) => food.id} keyboardShouldPersistTaps="handled"
+    {mode === 'online' ? <OnlineFoodSearch onSelect={(food) => onSelect ? onSelect(food) : router.push({ pathname: '/foods/[id]', params: { id: food.id } })} /> : <FlatList data={loading ? [] : items} keyExtractor={(food) => food.id} keyboardShouldPersistTaps="handled"
       contentContainerStyle={local.list}
       renderItem={({ item }) => <Pressable accessibilityRole="button" accessibilityLabel={`${onSelect ? 'Select' : 'View'} ${item.name}`}
         style={local.row} onPress={() => onSelect ? onSelect(item) : router.push({ pathname: '/foods/[id]', params: { id: item.id } })}>
@@ -72,7 +80,7 @@ export function FoodCatalogScreen({ onSelect }: { onSelect?: (food: Food) => voi
           <Pressable accessibilityRole="button" style={styles.button} onPress={() => items.length ? loadMore() : setRetry((value) => value + 1)}><Text style={styles.buttonText}>Try again</Text></Pressable></> : null}
         {hasMore && !loading && !error ? <Pressable accessibilityRole="button" disabled={moreLoading} style={styles.button} onPress={loadMore}>
           <Text style={styles.buttonText}>{moreLoading ? 'Loading...' : 'Load more'}</Text></Pressable> : null}
-      </View>} />
+      </View>} />}
   </SafeAreaView>;
 }
 
