@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Check, ChevronLeft, ChevronRight, Copy, Plus, Trash2 } from 'lucide-react-native';
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { CalendarClock, Check, ChevronLeft, ChevronRight, Copy, Plus, Trash2 } from 'lucide-react-native';
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { caloriesLabel, DiaryDateField, DiaryIconButton, diaryStyles, mealLabel } from '@/components/diaryUi';
 import { foodStyles as styles } from '@/components/foodUi';
@@ -83,38 +83,40 @@ export function PlanScreen() {
 
   return <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.screen}>
     <ScrollView contentContainerStyle={styles.content}>
+      <View style={ui.heading}>
+        <CalendarClock size={24} color={planningColor} />
+        <Text accessibilityRole="header" style={styles.title}>{date > localCalendarDate() ? 'Upcoming meals' : 'Planned meals'}</Text>
+      </View>
       <View style={diaryStyles.dateRow}>
         <DiaryIconButton icon={ChevronLeft} label="Previous planning day" disabled={busy || date === '1900-01-01'} onPress={() => selectDate(shiftCalendarDate(date, -1))} />
         <DiaryDateField value={date} onChange={selectDate} disabled={busy} />
         <DiaryIconButton icon={ChevronRight} label="Next planning day" disabled={busy || date === '2100-12-31'} onPress={() => selectDate(shiftCalendarDate(date, 1))} />
       </View>
       <View style={diaryStyles.controls}>
-        <Pressable accessibilityRole="button" disabled={busy} style={[styles.option, diaryStyles.control]} onPress={() => selectDate(shiftCalendarDate(localCalendarDate(), 1))}><Text style={styles.body}>Tomorrow</Text></Pressable>
-        <DiaryIconButton icon={Copy} label="Copy a day's plan" disabled={busy} onPress={() => {
+        <Pressable accessibilityRole="button" disabled={busy} style={[ui.toolbarButton, diaryStyles.control]} onPress={() => selectDate(shiftCalendarDate(localCalendarDate(), 1))}><Text style={ui.actionText}>Tomorrow</Text></Pressable>
+        <Pressable accessibilityRole="button" disabled={busy} style={ui.toolbarButton} onPress={() => {
           setSource(date === '1900-01-01' ? date : shiftCalendarDate(date, -1)); setDestination(date); setActionError(''); setAction('copy');
-        }} />
+        }}><Copy size={18} color={planningColor} /><Text style={ui.actionText}>Copy plan</Text></Pressable>
       </View>
       {error ? <View style={styles.field}><Text accessibilityRole="alert" style={styles.error}>{error}</Text>
         <Pressable accessibilityRole="button" style={styles.button} onPress={() => setRetry((current) => current + 1)}><Text style={styles.buttonText}>Try again</Text></Pressable></View>
         : !day ? <ActivityIndicator accessibilityLabel="Loading meal plan" color={theme.colors.accent} /> : <>
-          <View style={styles.field}>
-            <Text accessibilityRole="header" style={styles.title}>Planned day</Text>
-            <Text style={styles.nutrition}>{caloriesLabel(totals.total)}</Text>
+          <View style={ui.forecast}>
+            <Text style={styles.detail}>Planned calories</Text>
+            <Text style={[styles.nutrition, ui.plannedTotal]}>{caloriesLabel(totals.total)}</Text>
             {progress ? <>
-              <Text style={styles.body}>Daily target: {caloriesLabel(progress.target)}</Text>
+              <Text style={styles.body}>Estimated target: {caloriesLabel(progress.target)}</Text>
               <Text style={progress.state === 'over' ? styles.error : styles.detail}>{progress.state === 'reached' ? 'Plan meets target' : `${caloriesLabel(Math.abs(progress.remaining))} ${progress.state === 'over' ? 'over' : 'below'} target`}</Text>
-              <Text style={styles.detail}>Current profile target; calorie needs are estimates.</Text>
-            </> : <Pressable accessibilityRole="button" style={styles.option} onPress={() => router.push('/profile')}><Text style={styles.body}>Set calorie target</Text></Pressable>}
-            <Text style={styles.detail}>Planned calories, including eaten items.</Text>
+            </> : <Pressable accessibilityRole="button" style={[ui.toolbarButton, ui.targetAction]} onPress={() => router.push('/profile')}><Text style={ui.actionText}>Set calorie target</Text></Pressable>}
+            {day.entries.some((entry) => entry.eaten_at) ? <Text style={styles.detail}>Includes meals already logged</Text> : null}
           </View>
           {meals.map((meal) => {
             const entries = day.entries.filter((plan) => plan.meal === meal);
             const pending = entries.some((plan) => !plan.eaten_at);
-            return <View key={meal} style={diaryStyles.section}>
+            return <View key={meal} style={ui.mealCard}>
               <View style={diaryStyles.mealHeader}>
                 <Text accessibilityRole="header" style={[styles.label, diaryStyles.grow]}>{mealLabel(meal)}</Text>
                 <Text style={styles.body}>{caloriesLabel(totals.byMeal[meal])}</Text>
-                <DiaryIconButton icon={Plus} label={`Plan food for ${meal}`} disabled={busy} onPress={() => router.push({ pathname: '/plans/select', params: { date, meal } })} />
               </View>
               {entries.map((plan) => <View key={plan.id} style={diaryStyles.entryRow}>
                 <Pressable accessibilityRole="button" disabled={busy || Boolean(plan.eaten_at && !plan.diary_entry_id)} style={diaryStyles.entry}
@@ -130,10 +132,17 @@ export function PlanScreen() {
                   { text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => remove(plan) },
                 ])} /> : null}
               </View>)}
-              {!entries.length ? <Text style={styles.detail}>No foods planned.</Text> : <View style={diaryStyles.controls}>
-                <DiaryIconButton icon={Check} label={`Mark ${meal} eaten`} disabled={busy || !pending} onPress={() => { setEatenDate(localCalendarDate()); setActionError(''); setAction(meal); }} />
-                <Text style={[styles.detail, diaryStyles.grow]}>{pending ? 'Not yet eaten' : 'Meal logged'}</Text>
-              </View>}
+              {!entries.length ? <Text style={styles.detail}>Not planned</Text> : <Text style={styles.detail}>{pending ? 'Not logged' : 'Logged in diary'}</Text>}
+              <View style={ui.cardActions}>
+                <Pressable accessibilityRole="button" accessibilityLabel={`Plan food for ${meal}`} disabled={busy}
+                  style={[ui.toolbarButton, busy && styles.disabled]} onPress={() => router.push({ pathname: '/plans/select', params: { date, meal } })}>
+                  <Plus size={18} color={planningColor} /><Text style={ui.actionText}>Plan food</Text>
+                </Pressable>
+                {pending ? <Pressable accessibilityRole="button" accessibilityLabel={`Mark ${meal} eaten`} disabled={busy}
+                  style={[ui.toolbarButton, busy && styles.disabled]} onPress={() => { setEatenDate(localCalendarDate()); setActionError(''); setAction(meal); }}>
+                  <Check size={18} color={theme.colors.accent} /><Text style={ui.eatenAction}>Log as eaten</Text>
+                </Pressable> : null}
+              </View>
             </View>;
           })}
         </>}
@@ -152,3 +161,16 @@ export function PlanScreen() {
     </Modal>
   </SafeAreaView>;
 }
+
+const planningColor = '#2563A0';
+const ui = StyleSheet.create({
+  heading: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
+  toolbarButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 8 },
+  actionText: { fontSize: 16, lineHeight: 24, fontWeight: '600', color: planningColor, flexShrink: 1 },
+  forecast: { gap: 6, paddingVertical: 12, borderBottomWidth: 2, borderColor: planningColor },
+  plannedTotal: { color: planningColor },
+  targetAction: { alignSelf: 'flex-start', paddingHorizontal: 0 },
+  mealCard: { gap: 12, padding: 16, borderRadius: 8, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: '#D6E3F2', borderLeftWidth: 4 },
+  cardActions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 },
+  eatenAction: { fontSize: 16, lineHeight: 24, fontWeight: '600', color: theme.colors.accent, flexShrink: 1 },
+});

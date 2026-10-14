@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ChevronLeft, ChevronRight, Plus, BookOpen, Search, UserRound, CalendarClock, ChartNoAxesCombined } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, BookOpen, Search, UserRound, CalendarClock, ChartNoAxesCombined } from 'lucide-react-native';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -60,25 +60,12 @@ export function DashboardScreen() {
           <Text accessibilityRole="header" style={foodStyles.title}>Home</Text>
         </View>
       </View>
-      <View style={styles.destinations}>
-        {homeDestinations(date).map((destination) => {
-          const Icon = { diary: BookOpen, plans: CalendarClock, foods: Search, history: ChartNoAxesCombined, profile: UserRound }[destination.key];
-          return <Pressable key={destination.key} accessibilityRole="button"
-            onPress={() => router.push(destination.href)}
-            style={({ pressed }) => [styles.destination, pressed && styles.destinationPressed]}>
-            <Icon size={22} color={theme.colors.accent} />
-            <Text style={styles.destinationLabel}>{destination.label}</Text>
-            <ChevronRight size={20} color={theme.colors.secondaryText} />
-          </Pressable>;
-        })}
-      </View>
-      <Text accessibilityRole="header" style={foodStyles.label}>Daily overview</Text>
       <View style={diaryStyles.dateRow}>
         <DiaryIconButton icon={ChevronLeft} label="Previous day" disabled={date === '1900-01-01'} onPress={() => selectDate(shiftCalendarDate(date, -1))} />
         <DiaryDateField value={date} onChange={selectDate} />
         <DiaryIconButton icon={ChevronRight} label="Next day" disabled={date === '2100-12-31'} onPress={() => selectDate(shiftCalendarDate(date, 1))} />
       </View>
-      <Pressable accessibilityRole="button" onPress={() => selectDate(localCalendarDate())} style={styles.today}><Text style={styles.link}>Today</Text></Pressable>
+      {date !== localCalendarDate() ? <Pressable accessibilityRole="button" onPress={() => selectDate(localCalendarDate())} style={styles.today}><Text style={styles.link}>Today</Text></Pressable> : null}
       {error ? <View style={foodStyles.field}>
         <Text accessibilityRole="alert" style={foodStyles.error}>{error}</Text>
         <Pressable accessibilityRole="button" style={foodStyles.button} onPress={() => setRetry((current) => current + 1)}><Text style={foodStyles.buttonText}>Try again</Text></Pressable>
@@ -104,23 +91,40 @@ export function DashboardScreen() {
             <Pressable accessibilityRole="button" style={foodStyles.button} onPress={() => router.push('/profile')}><Text style={foodStyles.buttonText}>Set calorie target</Text></Pressable>
           </>}
         </View>
-        <View style={styles.header}>
-          <Text accessibilityRole="header" style={[foodStyles.label, diaryStyles.grow]}>Meals</Text>
-        </View>
+      </>}
+      <View style={styles.shortcuts}>
+        {homeDestinations(date).slice(0, 2).map((destination) => {
+          const planned = destination.key === 'plans';
+          const Icon = planned ? CalendarClock : BookOpen;
+          return <Pressable key={destination.key} accessibilityRole="button" onPress={() => router.push(destination.href)}
+            style={({ pressed }) => [styles.shortcut, planned ? styles.planningShortcut : styles.diaryShortcut, pressed && styles.pressed]}>
+            <Icon size={28} color={planned ? '#2563A0' : theme.colors.accent} />
+            <Text style={styles.destinationLabel}>{destination.label}</Text>
+            <Text style={foodStyles.detail}>{planned ? 'Upcoming' : 'Eaten'}</Text>
+          </Pressable>;
+        })}
+      </View>
+      <View>
+        {homeDestinations(date).slice(2).map((destination) => {
+          const Icon = { diary: BookOpen, plans: CalendarClock, foods: Search, history: ChartNoAxesCombined, profile: UserRound }[destination.key];
+          return <Pressable key={destination.key} accessibilityRole="button" onPress={() => router.push(destination.href)}
+            style={({ pressed }) => [styles.destination, pressed && styles.pressed]}>
+            <Icon size={20} color={theme.colors.secondaryText} />
+            <Text style={styles.secondaryLabel}>{destination.label}</Text>
+            <ChevronRight size={18} color={theme.colors.secondaryText} />
+          </Pressable>;
+        })}
+      </View>
+      {day && !error ? <>
+        <Text accessibilityRole="header" style={foodStyles.label}>Eaten meals</Text>
         {meals.map((meal) => {
           const entries = day.entries.filter((entry) => entry.meal === meal);
-          return <View style={diaryStyles.section} key={meal}>
-            <View style={diaryStyles.mealHeader}>
-              <Text accessibilityRole="header" style={[foodStyles.label, diaryStyles.grow]}>{mealLabel(meal)}</Text>
-              <Text style={foodStyles.body}>{caloriesLabel(day.totals.byMeal[meal])}</Text>
-              <DiaryIconButton icon={Plus} label={`Add food to ${meal}`} onPress={() => router.push({ pathname: '/diary/select', params: { date, meal } })} />
-            </View>
-            {entries.length ? <Text style={foodStyles.detail}>{entries.map((entry) => entry.name).join(', ')}</Text>
-              : <Text style={foodStyles.detail}>No food logged.</Text>}
-            {entries.some((entry) => entry.source === 'bundled') ? <Text style={foodStyles.detail}>Includes unverified development samples.</Text> : null}
+          return <View style={styles.mealRow} key={meal}>
+            <Text style={[foodStyles.body, diaryStyles.grow]}>{mealLabel(meal)}</Text>
+            <Text style={foodStyles.detail}>{entries.length ? caloriesLabel(day.totals.byMeal[meal]) : 'Not logged'}</Text>
           </View>;
         })}
-      </>}
+      </> : null}
     </ScrollView>
   </SafeAreaView>;
 }
@@ -128,12 +132,17 @@ export function DashboardScreen() {
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   today: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start', paddingHorizontal: 12 },
-  destinations: { borderTopWidth: 1, borderColor: theme.colors.border },
+  shortcuts: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  shortcut: { flexGrow: 1, flexBasis: 145, gap: 10, padding: 16, borderRadius: 8, minHeight: 132 },
+  diaryShortcut: { backgroundColor: theme.colors.accentSurface },
+  planningShortcut: { backgroundColor: '#EAF2FB' },
   destination: { minHeight: 52, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: 1, borderColor: theme.colors.border },
-  destinationLabel: { flex: 1, fontSize: 17, lineHeight: 24, fontWeight: '600', color: theme.colors.text },
-  destinationPressed: { backgroundColor: theme.colors.accentSurface },
+  destinationLabel: { fontSize: 17, lineHeight: 24, fontWeight: '600', color: theme.colors.text },
+  secondaryLabel: { flex: 1, fontSize: 16, lineHeight: 24, color: theme.colors.text },
+  pressed: { opacity: 0.6 },
+  mealRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 36 },
   link: { color: theme.colors.accent, fontSize: 17, fontWeight: '600', flexShrink: 1 },
-  summary: { gap: 16, padding: 20, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8 },
+  summary: { gap: 12, paddingVertical: 8 },
   balance: { color: theme.colors.accent, fontSize: 30, lineHeight: 38, fontWeight: '700' },
   track: { height: 10, borderRadius: 5, overflow: 'hidden', backgroundColor: theme.colors.accentSurface },
   fill: { height: '100%', backgroundColor: theme.colors.accent },

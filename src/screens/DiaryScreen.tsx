@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react-native';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { BookOpen, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { caloriesLabel, DiaryDateField, DiaryIconButton, diaryStyles, mealLabel } from '@/components/diaryUi';
@@ -58,14 +58,18 @@ export function DiaryScreen() {
   const busy = loading || (result.date !== date && !error);
   return <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.screen}>
     <ScrollView contentContainerStyle={styles.content}>
+      <View style={ui.heading}>
+        <BookOpen size={24} color={theme.colors.accent} />
+        <Text accessibilityRole="header" style={styles.title}>Eaten meals</Text>
+      </View>
       <View style={diaryStyles.dateRow}>
         <DiaryIconButton icon={ChevronLeft} label="Previous day" disabled={date === '1900-01-01'} onPress={() => selectDate(shiftCalendarDate(date, -1))} />
         <DiaryDateField value={date} onChange={selectDate} />
         <DiaryIconButton icon={ChevronRight} label="Next day" disabled={date === '2100-12-31'} onPress={() => selectDate(shiftCalendarDate(date, 1))} />
       </View>
-      <Pressable accessibilityRole="button" style={styles.option} onPress={() => selectDate(localCalendarDate())}><Text style={styles.body}>Today</Text></Pressable>
-      <View style={styles.field}>
-        <Text accessibilityRole="header" style={styles.title}>Daily total</Text>
+      {date !== localCalendarDate() ? <Pressable accessibilityRole="button" style={ui.today} onPress={() => selectDate(localCalendarDate())}><Text style={ui.actionText}>Today</Text></Pressable> : null}
+      <View style={ui.total}>
+        <Text style={styles.detail}>Consumed</Text>
         {busy ? <ActivityIndicator accessibilityLabel="Loading diary" color={theme.colors.accent} />
           : error ? <Text style={styles.body}>Unavailable</Text> : <Text style={styles.nutrition}>{caloriesLabel(totals.total)}</Text>}
       </View>
@@ -80,8 +84,8 @@ export function DiaryScreen() {
         {entries.filter((entry) => entry.meal === meal).map((entry) => <View key={entry.id} style={diaryStyles.entryRow}>
           <Pressable accessibilityRole="button" accessibilityLabel={`Edit ${entry.name}`} disabled={Boolean(deleting)} style={diaryStyles.entry}
             onPress={() => router.push({ pathname: '/diary/edit', params: { id: entry.id, date: entry.entry_date, meal: entry.meal } })}>
-            <Text style={styles.label}>{entry.name}</Text>
-            <Text style={styles.body}>{caloriesLabel(entry.total_calories)}</Text>
+            <View style={ui.foodRow}><Text style={[styles.label, diaryStyles.grow]}>{entry.name}</Text>
+              <Text style={styles.body}>{caloriesLabel(entry.total_calories)}</Text></View>
             <Text style={styles.detail}>{entry.quantity_mode === 'servings' ? `${entry.quantity} servings` : `${entry.quantity} ${entry.serving_unit}`}</Text>
             {entry.source === 'bundled' ? <Text style={styles.detail}>Unverified development sample</Text> : null}
           </Pressable>
@@ -89,8 +93,16 @@ export function DiaryScreen() {
             { text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => remove(entry) },
           ])} />
         </View>)}
-        {!entries.some((entry) => entry.meal === meal) ? <Text style={styles.detail}>No {meal} entries.</Text> : null}
+        {!entries.some((entry) => entry.meal === meal) ? <Text style={styles.detail}>Nothing logged yet</Text> : null}
       </View>) : null}
     </ScrollView>
   </SafeAreaView>;
 }
+
+const ui = StyleSheet.create({
+  heading: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
+  total: { paddingVertical: 12, borderBottomWidth: 2, borderColor: theme.colors.accent, gap: 4 },
+  today: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
+  actionText: { fontSize: 16, fontWeight: '600', color: theme.colors.accent },
+  foodRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
+});
