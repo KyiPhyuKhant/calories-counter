@@ -3,6 +3,7 @@ import { developmentFoods } from './developmentFoods.ts';
 import { insertBundledFood } from './foodRepository.ts';
 import { normalizeFoodName } from '../domain/food.ts';
 import { localCalendarDate } from '../domain/diary.ts';
+import { recordCurrentTarget } from './targetHistory.ts';
 
 const nutritionColumns = `
   name TEXT NOT NULL CHECK (length(trim(name)) > 0),
@@ -249,6 +250,30 @@ export const migrations = [{
     CREATE TRIGGER plans_eaten_delete BEFORE DELETE ON planned_meals WHEN old.eaten_at IS NOT NULL
       BEGIN SELECT RAISE(ABORT, 'Eaten plans are retained as history'); END;
   `,
+}, {
+  version: 6,
+  sql: `
+    CREATE TABLE weights_v6 (
+      id TEXT PRIMARY KEY NOT NULL CHECK (length(id) > 0),
+      profile_id TEXT NOT NULL REFERENCES user_profiles(id) ON DELETE RESTRICT,
+      weight_kg REAL NOT NULL CHECK (weight_kg > 0),
+      measured_date TEXT NOT NULL CHECK (length(measured_date) = 10 AND date(measured_date, '+0 days') IS NOT NULL AND date(measured_date, '+0 days') = measured_date),
+      measured_at TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    );
+    INSERT INTO weights_v6 (id, profile_id, weight_kg, measured_date, measured_at, created_at, updated_at)
+      SELECT id, profile_id, weight_kg, substr(measured_at, 1, 10), measured_at, created_at, created_at FROM weight_history;
+    DROP TABLE weight_history;
+    ALTER TABLE weights_v6 RENAME TO weight_history;
+    CREATE INDEX weight_profile_time_idx ON weight_history(profile_id, measured_at, id);
+    CREATE INDEX weight_profile_date_idx ON weight_history(profile_id, measured_date, id);
+    CREATE TABLE calorie_target_history (
+      profile_id TEXT NOT NULL REFERENCES user_profiles(id) ON DELETE RESTRICT,
+      effective_date TEXT NOT NULL CHECK (length(effective_date) = 10 AND date(effective_date, '+0 days') IS NOT NULL AND date(effective_date, '+0 days') = effective_date),
+      target INTEGER CHECK (target > 0 AND target = CAST(target AS INTEGER)),
+      recorded_at TEXT NOT NULL,
+      PRIMARY KEY (profile_id, effective_date)
+    );
+  `,
 }] as const;
 
 export async function initializeDatabase(db: Database) {
@@ -288,6 +313,14 @@ export async function initializeDatabase(db: Database) {
             const plans = await tx.getAllAsync<{ id: string; planned_at: string }>('SELECT id, planned_at FROM planned_meals');
             for (const plan of plans) await tx.runAsync('UPDATE planned_meals SET entry_date = ? WHERE id = ?',
               localCalendarDate(new Date(plan.planned_at)), plan.id);
+          }
+          if (migration.version === 6) {
+            const weights = await tx.getAllAsync<{ id: string; measured_at: string }>('SELECT id, measured_at FROM weight_history');
+            for (const weight of weights) await tx.runAsync('UPDATE weight_history SET measured_date = ? WHERE id = ?',
+              localCalendarDate(new Date(weight.measured_at)), weight.id);
+            // Prior versions did not retain targets. Start history now, never backfill guesses.
+            const time = new Date().toISOString();
+            await recordCurrentTarget(tx, localCalendarDate(new Date(time)), time);
           }
           // Only trusted migration constants are interpolated, never user input.
           await tx.execAsync(`PRAGMA user_version = ${migration.version}`);

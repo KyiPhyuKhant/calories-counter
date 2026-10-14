@@ -154,7 +154,8 @@ test('migration 4 preserves gram snapshots and food links, resolves legacy local
   for (const migration of migrations.slice(0, 3)) await db.execAsync(migration.sql);
   await db.execAsync('PRAGMA user_version = 3');
   const r = createRepositories(db, randomUUID);
-  const profileId = await r.profiles.save({ name: 'User' });
+  const profileId = randomUUID();
+  await db.runAsync('INSERT INTO user_profiles (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)', profileId, 'User', '2026-10-13T00:00:00Z', '2026-10-13T00:00:00Z');
   const foodId = await r.foods.createCustom({ ...food, name: 'Changed catalog', calories: 999 });
   const at = '2026-10-12T23:30:00.000Z';
   await db.runAsync('INSERT INTO diary_entries VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',

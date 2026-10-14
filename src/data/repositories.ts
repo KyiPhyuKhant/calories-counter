@@ -3,8 +3,11 @@ import { calculateCalorieGoal, type CalorieProfile } from '../domain/calorieGoal
 import { createFoodRepository } from './foodRepository.ts';
 import { createDiaryRepository } from './diaryRepository.ts';
 import { summarizeDashboard } from '../domain/dashboard.ts';
-import { validateCalendarDate, type DiaryEntry } from '../domain/diary.ts';
+import { localCalendarDate, validateCalendarDate, type DiaryEntry } from '../domain/diary.ts';
 import { createPlanRepository } from './planRepository.ts';
+import { createWeightRepository } from './weightRepository.ts';
+import { createHistoryRepository } from './historyRepository.ts';
+import { recordCurrentTarget } from './targetHistory.ts';
 
 export interface Nutrition {
   name: string;
@@ -34,7 +37,6 @@ export interface FoodSnapshot extends Nutrition {
   amount_g: number;
   created_at: string;
 }
-export interface WeightEntry { id: string; profile_id: string; weight_kg: number; measured_at: string; created_at: string }
 
 function positive(value: number) {
   if (!Number.isFinite(value) || value <= 0) throw new Error('Expected a positive finite number.');
@@ -42,14 +44,6 @@ function positive(value: number) {
 function name(value: string) {
   if (!value.trim()) throw new Error('A name is required.');
   return value.trim();
-}
-function timestamp(value: string) {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) throw new Error('Invalid timestamp.');
-  return date.toISOString();
-}
-async function requireChanged(result: Promise<{ changes: number }>) {
-  if ((await result).changes !== 1) throw new Error('Record not found.');
 }
 
 export function createRepositories(db: Database, newId: () => string, now = () => new Date().toISOString()) {
@@ -59,19 +53,24 @@ export function createRepositories(db: Database, newId: () => string, now = () =
       async saveCalorieProfile(input: CalorieProfile) {
         calculateCalorieGoal(input);
         const time = now();
-        const row = await db.getFirstAsync<{ id: string }>(`
-          INSERT INTO user_profiles (id, name, height_cm, sex, age, current_weight_kg,
-            target_weight_kg, activity_level, goal, manual_calorie_target, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          ON CONFLICT(singleton) DO UPDATE SET height_cm = excluded.height_cm, sex = excluded.sex,
-            age = excluded.age, current_weight_kg = excluded.current_weight_kg,
-            target_weight_kg = excluded.target_weight_kg, activity_level = excluded.activity_level,
-            goal = excluded.goal, manual_calorie_target = excluded.manual_calorie_target,
-            updated_at = excluded.updated_at RETURNING id`,
-        newId(), 'Local user', input.height_cm, input.sex, input.age, input.current_weight_kg,
-        input.target_weight_kg, input.activity_level, input.goal, input.manual_calorie_target, time, time);
-        if (!row) throw new Error('Profile could not be saved.');
-        return row.id;
+        let id = '';
+        await db.withExclusiveTransactionAsync(async (tx) => {
+          const row = await tx.getFirstAsync<{ id: string }>(`
+            INSERT INTO user_profiles (id, name, height_cm, sex, age, current_weight_kg,
+              target_weight_kg, activity_level, goal, manual_calorie_target, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(singleton) DO UPDATE SET height_cm = excluded.height_cm, sex = excluded.sex,
+              age = excluded.age, current_weight_kg = excluded.current_weight_kg,
+              target_weight_kg = excluded.target_weight_kg, activity_level = excluded.activity_level,
+              goal = excluded.goal, manual_calorie_target = excluded.manual_calorie_target,
+              updated_at = excluded.updated_at RETURNING id`,
+          newId(), 'Local user', input.height_cm, input.sex, input.age, input.current_weight_kg,
+          input.target_weight_kg, input.activity_level, input.goal, input.manual_calorie_target, time, time);
+          if (!row) throw new Error('Profile could not be saved.');
+          id = row.id;
+          await recordCurrentTarget(tx, localCalendarDate(new Date(time)), time);
+        });
+        return id;
       },
       async save(input: { name: string; height_cm?: number | null }) {
         const height = input.height_cm ?? null;
@@ -86,6 +85,7 @@ export function createRepositories(db: Database, newId: () => string, now = () =
             VALUES (?, ?, ?, ?, ?) ON CONFLICT(singleton) DO UPDATE SET
             name = excluded.name, height_cm = excluded.height_cm, updated_at = excluded.updated_at`,
           id, displayName, height, time, time);
+          await recordCurrentTarget(tx, localCalendarDate(new Date(time)), time);
         });
         return id;
       },
@@ -93,19 +93,8 @@ export function createRepositories(db: Database, newId: () => string, now = () =
     foods: createFoodRepository(db, newId, now),
     diary: createDiaryRepository(db, newId, now),
     plans: createPlanRepository(db, newId, now),
-    weights: {
-      async add(profileId: string, weightKg: number, measuredAt: string) {
-        positive(weightKg);
-        const time = timestamp(measuredAt);
-        const id = newId();
-        await db.runAsync(`INSERT INTO weight_history (id, profile_id, weight_kg, measured_at, created_at)
-          VALUES (?, ?, ?, ?, ?)`, id, profileId, weightKg, time, now());
-        return id;
-      },
-      list: (profileId: string) => db.getAllAsync<WeightEntry>(
-        'SELECT * FROM weight_history WHERE profile_id = ? ORDER BY measured_at DESC, id', profileId),
-      remove: (id: string) => requireChanged(db.runAsync('DELETE FROM weight_history WHERE id = ?', id)),
-    },
+    weights: createWeightRepository(db, newId, now),
+    history: createHistoryRepository(db, now),
   };
 
   const listeners = new Set<() => void>();
@@ -133,6 +122,10 @@ export function createRepositories(db: Database, newId: () => string, now = () =
       update: observe(repositories.plans.update), remove: observe(repositories.plans.remove),
       copyDay: observe(repositories.plans.copyDay), markEaten: observe(repositories.plans.markEaten),
       markMealEaten: observe(repositories.plans.markMealEaten),
+    },
+    weights: { ...repositories.weights,
+      add: observe(repositories.weights.add), create: observe(repositories.weights.create),
+      update: observe(repositories.weights.update), remove: observe(repositories.weights.remove),
     },
     dashboard: {
       async getDay(date: string) {

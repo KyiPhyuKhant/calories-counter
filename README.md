@@ -3,7 +3,7 @@
 An iOS-first React Native app built with Expo, Expo Router, and strict TypeScript.
 The app currently contains a daily dashboard, an editable profile and calorie
 goal calculator, a searchable food catalog, a daily food diary, and future meal
-planning backed by SQLite.
+planning and weight/calorie history backed by SQLite.
 It does not require an account, server, or network connection to store data.
 
 ## Development
@@ -233,3 +233,44 @@ conversion when a planned date arrives.
 
 Tests cover planning CRUD, snapshot copies, day/meal separation, conversion
 idempotency, transaction rollback, migration preservation, and reopen persistence.
+
+## Weight and calorie history
+
+Open **Weight and calorie history** on the dashboard. Weekly periods run Monday
+through Sunday; monthly periods use calendar months. The date picker and arrows
+select the period. Weight and Calories tabs show their respective summaries and
+dated records, with live refresh after repository writes or returning to the screen.
+
+The weight tab records measurements in kilograms on explicit local calendar dates.
+New or edited measurements support 35-300 kg and today or earlier dates. Recording,
+editing, or deleting a measurement never updates the current profile weight.
+Multiple measurements on a date are retained, including legacy duplicates; the
+accessible SVG point chart displays their labeled daily mean. Missing dates have
+no points and are not interpolated. Every recorded measurement remains available
+in the list for editing and deletion. Period average weight uses all recorded
+measurements; change compares the first and last observed daily means and is
+unavailable without two distinct measured dates.
+
+Migration 6 preserves weight IDs, values and original timestamps, resolving legacy
+local dates once. The explicit measurement date remains stable after timezone
+changes; the original instant and creation timestamp are retained for auditing.
+
+Calorie history reads consumed diary snapshots only, excluding plans. No entries
+means **No food logged**, not a measured zero. A recorded zero-calorie food can
+produce a real zero logged total. Period totals and averages use logged days only,
+with coverage counts shown; they do not imply a complete intake record. Future
+dates are listed but excluded from summaries and target comparisons.
+
+Previous versions did not retain historical targets. This upgrade records the
+current profile's valid target on the upgrade date only; earlier targets remain
+unknown. Subsequent profile saves atomically record an effective local date and
+target, including manual overrides. The final target saved on a date applies to
+that day and carries forward until the next change; intraday revisions are not
+retained. An incomplete profile records an unknown target rather than carrying a
+stale one forward. Under/at/over status requires both logged calories and a known
+dated target. The dashboard and planner still use the current profile target;
+the history view uses the dated target record. Targets remain estimates.
+
+Tests cover date ranges across DST, leap months and years, missing versus zero
+logs, dated targets, all comparison states, weight CRUD and duplicate-day means,
+profile independence, transactional rollback, migrations, and reopen persistence.

@@ -142,7 +142,8 @@ test('migration 5 preserves legacy plan IDs, gram snapshots and local dates; int
   for (const migration of migrations.slice(0, 4)) await db.execAsync(migration.sql);
   await db.execAsync('PRAGMA user_version = 4');
   const r = createRepositories(db, randomUUID, now);
-  const profileId = await r.profiles.save({ name: 'Legacy user' });
+  const profileId = randomUUID();
+  await db.runAsync('INSERT INTO user_profiles (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)', profileId, 'Legacy user', now(), now());
   const foodId = await r.foods.createCustom(food);
   const at = '2026-10-19T23:30:00.000Z';
   await db.runAsync('INSERT INTO planned_meals VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 'legacy-plan', profileId, foodId, 'Historical plan', 100, null, 20, 4, 50, at, now());

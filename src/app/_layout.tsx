@@ -16,6 +16,8 @@ export default function RootLayout() {
           }}
         >
           <Stack.Screen name="profile" options={{ headerShown: true, title: 'Your profile', headerTintColor: theme.colors.accent }} />
+          <Stack.Screen name="history/index" options={{ headerShown: true, title: 'History', headerTintColor: theme.colors.accent }} />
+          <Stack.Screen name="history/weight" options={{ headerShown: true, title: 'Weight measurement', headerTintColor: theme.colors.accent }} />
           <Stack.Screen name="diary/index" options={{ headerShown: true, title: 'Food diary', headerTintColor: theme.colors.accent }} />
           <Stack.Screen name="diary/select" options={{ headerShown: true, title: 'Select food', headerTintColor: theme.colors.accent }} />
           <Stack.Screen name="diary/edit" options={{ headerShown: true, title: 'Diary entry', headerTintColor: theme.colors.accent }} />
