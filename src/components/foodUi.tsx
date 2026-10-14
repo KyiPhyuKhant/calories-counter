@@ -7,7 +7,7 @@ import { theme } from '@/theme/theme';
 
 export function foodSourceLabel(food: Food) {
   return food.source === 'bundled' ? 'Bundled development sample - unverified'
-    : food.source === 'external' ? food.provider === 'usda-fdc' ? 'USDA FoodData Central - saved offline' : `External (${food.provider}) - saved locally` : 'Custom food';
+    : food.source === 'external' ? `External (${food.provider}) - saved locally` : 'Custom food';
 }
 
 export function FoodField({ label, value, onChange, error, numeric = false, multiline = false, disabled = false }: {

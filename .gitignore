@@ -27,6 +27,7 @@ xcuserdata/
 *.dSYM/
 
 # Local configuration, credentials, and signing material
+.local/
 .env
 .env.*
 !.env.example
