@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
+import { NavigationButton } from '@/components/NavigationButton';
 import { DatabaseProvider } from '@/data/DatabaseProvider';
 import { theme } from '@/theme/theme';
 
@@ -11,10 +12,16 @@ export default function RootLayout() {
       <DatabaseProvider>
         <Stack
           screenOptions={{
-            headerShown: false,
+            headerShown: true,
+            headerBackVisible: false,
+            headerLeft: () => <NavigationButton destination="back" />,
+            headerRight: () => <NavigationButton destination="home" />,
+            headerTintColor: theme.colors.accent,
+            headerStyle: { backgroundColor: theme.colors.background },
             contentStyle: { backgroundColor: theme.colors.background },
           }}
         >
+          <Stack.Screen name="index" options={{ headerShown: false, title: 'Home' }} />
           <Stack.Screen name="profile" options={{ headerShown: true, title: 'Your profile', headerTintColor: theme.colors.accent }} />
           <Stack.Screen name="history/index" options={{ headerShown: true, title: 'History', headerTintColor: theme.colors.accent }} />
           <Stack.Screen name="history/weight" options={{ headerShown: true, title: 'Weight measurement', headerTintColor: theme.colors.accent }} />

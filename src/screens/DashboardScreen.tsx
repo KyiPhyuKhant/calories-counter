@@ -9,6 +9,7 @@ import { foodStyles } from '@/components/foodUi';
 import { useRepositories } from '@/data/DatabaseProvider';
 import type { Repositories } from '@/data/repositories';
 import { localCalendarDate, meals, shiftCalendarDate } from '@/domain/diary';
+import { homeDestinations } from '@/navigation/navigation';
 import { theme } from '@/theme/theme';
 
 type Day = Awaited<ReturnType<Repositories['dashboard']['getDay']>>;
@@ -56,22 +57,28 @@ export function DashboardScreen() {
       <View style={styles.header}>
         <View style={diaryStyles.grow}>
           <Text style={foodStyles.detail}>CALORIE COUNTER</Text>
-          <Text accessibilityRole="header" style={foodStyles.title}>Daily overview</Text>
+          <Text accessibilityRole="header" style={foodStyles.title}>Home</Text>
         </View>
-        <DiaryIconButton icon={UserRound} label="Edit profile and calorie target" onPress={() => router.push('/profile')} />
       </View>
+      <View style={styles.destinations}>
+        {homeDestinations(date).map((destination) => {
+          const Icon = { diary: BookOpen, plans: CalendarClock, foods: Search, history: ChartNoAxesCombined, profile: UserRound }[destination.key];
+          return <Pressable key={destination.key} accessibilityRole="button"
+            onPress={() => router.push(destination.href)}
+            style={({ pressed }) => [styles.destination, pressed && styles.destinationPressed]}>
+            <Icon size={22} color={theme.colors.accent} />
+            <Text style={styles.destinationLabel}>{destination.label}</Text>
+            <ChevronRight size={20} color={theme.colors.secondaryText} />
+          </Pressable>;
+        })}
+      </View>
+      <Text accessibilityRole="header" style={foodStyles.label}>Daily overview</Text>
       <View style={diaryStyles.dateRow}>
         <DiaryIconButton icon={ChevronLeft} label="Previous day" disabled={date === '1900-01-01'} onPress={() => selectDate(shiftCalendarDate(date, -1))} />
         <DiaryDateField value={date} onChange={selectDate} />
         <DiaryIconButton icon={ChevronRight} label="Next day" disabled={date === '2100-12-31'} onPress={() => selectDate(shiftCalendarDate(date, 1))} />
       </View>
       <Pressable accessibilityRole="button" onPress={() => selectDate(localCalendarDate())} style={styles.today}><Text style={styles.link}>Today</Text></Pressable>
-      <Pressable accessibilityRole="button" style={styles.planLink} onPress={() => router.push('/plans')}>
-        <CalendarClock size={22} color={theme.colors.accent} /><Text style={styles.link}>Meal plans</Text>
-      </Pressable>
-      <Pressable accessibilityRole="button" style={styles.planLink} onPress={() => router.push({ pathname: '/history', params: { date } })}>
-        <ChartNoAxesCombined size={22} color={theme.colors.accent} /><Text style={styles.link}>Weight and calorie history</Text>
-      </Pressable>
       {error ? <View style={foodStyles.field}>
         <Text accessibilityRole="alert" style={foodStyles.error}>{error}</Text>
         <Pressable accessibilityRole="button" style={foodStyles.button} onPress={() => setRetry((current) => current + 1)}><Text style={foodStyles.buttonText}>Try again</Text></Pressable>
@@ -99,8 +106,6 @@ export function DashboardScreen() {
         </View>
         <View style={styles.header}>
           <Text accessibilityRole="header" style={[foodStyles.label, diaryStyles.grow]}>Meals</Text>
-          <DiaryIconButton icon={BookOpen} label="Open diary for selected date" onPress={() => router.push({ pathname: '/diary', params: { date } })} />
-          <DiaryIconButton icon={Search} label="Browse food catalog" onPress={() => router.push('/foods')} />
         </View>
         {meals.map((meal) => {
           const entries = day.entries.filter((entry) => entry.meal === meal);
@@ -123,7 +128,10 @@ export function DashboardScreen() {
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   today: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start', paddingHorizontal: 12 },
-  planLink: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  destinations: { borderTopWidth: 1, borderColor: theme.colors.border },
+  destination: { minHeight: 52, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: 1, borderColor: theme.colors.border },
+  destinationLabel: { flex: 1, fontSize: 17, lineHeight: 24, fontWeight: '600', color: theme.colors.text },
+  destinationPressed: { backgroundColor: theme.colors.accentSurface },
   link: { color: theme.colors.accent, fontSize: 17, fontWeight: '600', flexShrink: 1 },
   summary: { gap: 16, padding: 20, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8 },
   balance: { color: theme.colors.accent, fontSize: 30, lineHeight: 38, fontWeight: '700' },
