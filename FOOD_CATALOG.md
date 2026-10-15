@@ -6,6 +6,7 @@ The user-supplied `multicultural_food_catalog.json` is split by cuisine under
 `src/data/catalog/`, starting with Myanmar. The original names, stable IDs,
 serving amounts, notes, image references, and null nutrition values are retained.
 These are catalog metadata, not verified nutrition or validated portions.
+The Myanmar and Japanese stages each add the 30 supplied dishes with native names.
 
 `DatabaseProvider` runs migrations and then `seedBundledFoodCatalog` before
 exposing repositories or screens. `importFoodCatalog` validates the manifest,

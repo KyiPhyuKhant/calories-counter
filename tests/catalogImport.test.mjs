@@ -26,6 +26,13 @@ async function fixture(t) {
 const manifest = (foods) => ({ schema_version: 1, foods });
 const first = bundledFoodCatalog.foods[0];
 
+test('Myanmar and Japanese stages each contain the 30 supplied dishes with native names', () => {
+  for (const cuisine of ['myanmar', 'japanese']) {
+    const foods = bundledFoodCatalog.foods.filter((food) => food.cuisine === cuisine);
+    assert.equal(foods.length, 30); assert.ok(foods.every((food) => food.native_name && food.category === 'dish'));
+  }
+});
+
 test('bundled manifest validates unique stable IDs and never substitutes invented nutrition', () => {
   const foods = parseFoodCatalog(bundledFoodCatalog);
   assert.ok(foods.length >= 30);
