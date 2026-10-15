@@ -7,6 +7,7 @@ import { FoodField, foodSourceLabel, foodStyles as styles } from '@/components/f
 import { useRepositories } from '@/data/DatabaseProvider';
 import { calculateServing, type Food } from '@/domain/food';
 import { theme } from '@/theme/theme';
+import { parseFormNumber } from '@/domain/formNumber';
 
 export function FoodDetailScreen() {
   const { id: param } = useLocalSearchParams<{ id: string | string[] }>();
@@ -37,18 +38,18 @@ export function FoodDetailScreen() {
     try { await foods.remove(food.id); router.dismissTo('/foods'); }
     catch { setError('Could not delete this food. Please try again.'); setDeleting(false); }
   }
-  if (loading) return <View style={styles.status}><ActivityIndicator color={theme.colors.accent} /></View>;
+  if (loading) return <View style={styles.status}><ActivityIndicator accessibilityLabel="Loading food details" color={theme.colors.accent} /></View>;
   if (!food) return <View style={styles.status}><Text accessibilityRole="alert" style={styles.error}>{error}</Text>
     <Pressable accessibilityRole="button" style={styles.button} onPress={() => { setLoading(true); setAttempt((value) => value + 1); }}><Text style={styles.buttonText}>Try again</Text></Pressable></View>;
   let nutrition: ReturnType<typeof calculateServing> | null = null;
   let amountError = '';
   try {
-    nutrition = calculateServing(food, /^\d+(\.\d+)?$/.test(amount.trim()) ? Number(amount) : NaN);
+    nutrition = calculateServing(food, parseFormNumber(amount));
   } catch { amountError = 'Enter a positive amount up to 100000 in the declared unit.'; }
   const display = (value: number | null) => value === null ? 'Not provided' : `${Number(value.toFixed(1))} g`;
 
-  return <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.screen}>
-    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+  return <SafeAreaView edges={['left', 'right']} style={styles.screen}>
+    <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
       <Text accessibilityRole="header" style={styles.title}>{food.name}</Text>
       <Text style={styles.detail}>{foodSourceLabel(food)}</Text>
       {food.source === 'bundled' ? <Text style={styles.error}>Invented development values. Not verified nutritional data.</Text> : null}

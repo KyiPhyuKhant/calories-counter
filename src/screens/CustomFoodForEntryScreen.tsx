@@ -1,16 +1,15 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Text, View } from 'react-native';
-
 import { foodStyles } from '@/components/foodUi';
 import { localCalendarDate, meals, validateCalendarDate, type Meal } from '@/domain/diary';
-import { FoodCatalogScreen } from '@/screens/FoodCatalogScreen';
+import { FoodEditorScreen } from '@/screens/FoodEditorScreen';
 
-export default function DiaryFoodSelectionRoute() {
+export function CustomFoodForEntryScreen({ planning = false }: { planning?: boolean }) {
   const params = useLocalSearchParams<{ date?: string; meal?: string }>();
   const router = useRouter();
   const date = typeof params.date === 'string' ? params.date : localCalendarDate();
   const meal = meals.includes(params.meal as Meal) ? params.meal as Meal : 'snacks';
   try { validateCalendarDate(date); }
-  catch { return <View style={foodStyles.status}><Text style={foodStyles.error}>Invalid diary date.</Text></View>; }
-  return <FoodCatalogScreen onSelect={(food) => router.replace({ pathname: '/diary/edit', params: { foodId: food.id, date, meal } })} />;
+  catch { return <View style={foodStyles.status}><Text style={foodStyles.error}>Invalid entry date.</Text></View>; }
+  return <FoodEditorScreen onCreated={(foodId) => router.replace({ pathname: planning ? '/plans/edit' : '/diary/edit', params: { foodId, date, meal } })} />;
 }

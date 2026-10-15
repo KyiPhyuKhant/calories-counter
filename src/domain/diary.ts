@@ -42,6 +42,13 @@ export function shiftCalendarDate(value: string, days: number) {
   return localCalendarDate(date);
 }
 
+export function calendarDateLabel(value: string) {
+  const date = validateCalendarDate(value);
+  // App copy is English; avoid native calendar overrides changing the stored year.
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+}
+
 export function validateDiaryInput(input: DiaryInput) {
   validateCalendarDate(input.date);
   if (!meals.includes(input.meal)) throw new Error('Select breakfast, lunch, dinner, or snacks.');

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { caloriesLabel, DiaryDateField, DiaryMealField, diaryStyles } from '@/components/diaryUi';
@@ -10,6 +10,7 @@ import { calculateDiaryNutrition, localCalendarDate, meals, validateCalendarDate
 import type { Food } from '@/domain/food';
 import type { PlannedFood } from '@/data/planRepository';
 import { theme } from '@/theme/theme';
+import { parseFormNumber } from '@/domain/formNumber';
 
 function scalar(value?: string | string[]) { return Array.isArray(value) ? value[0] : value; }
 
@@ -27,6 +28,7 @@ export function DiaryEditorScreen({ planning = false }: { planning?: boolean }) 
   const [mode, setMode] = useState<QuantityMode>('servings');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [error, setError] = useState('');
   const [loadError, setLoadError] = useState('');
   const [attempt, setAttempt] = useState(0);
@@ -47,7 +49,7 @@ export function DiaryEditorScreen({ planning = false }: { planning?: boolean }) 
     return () => { active = false; };
   }, [entries, foods, id, foodId, params.date, attempt]);
 
-  const input: DiaryInput = { date, meal, quantity: /^\d+(\.\d+)?$/.test(quantity.trim()) ? Number(quantity) : NaN, quantity_mode: mode };
+  const input: DiaryInput = { date, meal, quantity: parseFormNumber(quantity), quantity_mode: mode };
   let preview: ReturnType<typeof calculateDiaryNutrition> | null = null;
   let validation = '';
   if (snapshot) {
@@ -55,22 +57,22 @@ export function DiaryEditorScreen({ planning = false }: { planning?: boolean }) 
     catch (failure) { validation = failure instanceof Error ? failure.message : 'Check your quantity.'; }
   }
   async function save() {
+    if (savingRef.current) return;
     if (!preview || !snapshot) { setError(validation || 'Select a food first.'); return; }
-    setSaving(true); setError('');
+    savingRef.current = true; setSaving(true); setError('');
     try {
       if (id) await entries.update(id, input);
       else await entries.addEntry(snapshot.id, input);
       router.dismissTo({ pathname: planning ? '/plans' : '/diary', params: { date } });
     } catch { setError('Could not save this entry. Your edits are still here; please try again.'); }
-    finally { setSaving(false); }
+    finally { savingRef.current = false; setSaving(false); }
   }
   if (loading) return <View style={styles.status}><ActivityIndicator accessibilityLabel="Loading entry" color={theme.colors.accent} /></View>;
   if (loadError || !snapshot) return <View style={styles.status}><Text accessibilityRole="alert" style={styles.error}>{loadError}</Text>
     <Pressable accessibilityRole="button" style={styles.button} onPress={() => { setLoadError(''); setLoading(true); setAttempt((value) => value + 1); }}><Text style={styles.buttonText}>Try again</Text></Pressable></View>;
 
-  return <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.screen}>
-    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.content} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled">
+  return <SafeAreaView edges={['left', 'right']} style={styles.screen}>
+      <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={styles.content} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled">
         <Text accessibilityRole="header" style={styles.title}>{snapshot.name}</Text>
         <Text style={styles.body}>{caloriesLabel(snapshot.calories)} per {snapshot.serving_amount} {snapshot.serving_unit}</Text>
         {snapshot.source === 'bundled' ? <Text style={styles.error}>Invented development values, not verified nutritional data.</Text> : null}
@@ -97,6 +99,5 @@ export function DiaryEditorScreen({ planning = false }: { planning?: boolean }) 
           <Text style={styles.buttonText}>{saving ? 'Saving...' : id ? 'Save changes' : planning ? 'Add to plan' : 'Log food'}</Text></Pressable>
         {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       </ScrollView>
-    </KeyboardAvoidingView>
   </SafeAreaView>;
 }

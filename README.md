@@ -6,6 +6,15 @@ goal calculator, a searchable food catalog, a daily food diary, and future meal
 planning and weight/calorie history backed by SQLite.
 It does not require an account, server, or network connection to store data.
 
+UI foundations and reusable component guidance are documented in
+[DESIGN_SYSTEM.md](DESIGN_SYSTEM.md). They are adopted incrementally without
+changing the SQLite schema or calorie calculations.
+
+Navigation now uses five persistent tabs: Home, Diary, Foods, Plan, and Profile.
+First launch follows Welcome -> Profile Setup -> Activity & Goal -> Daily Calorie
+Target -> Home. Existing completed profiles skip onboarding. See
+[NAVIGATION.md](NAVIGATION.md) for the route map and verification notes.
+
 ## Development
 
 Use Node.js 24 LTS (or newer) and npm. Database tests use Node's built-in SQLite.
@@ -41,6 +50,7 @@ npx expo export --platform ios
 
 - `src/app/`: Expo Router route entries and root navigation layout.
 - `src/screens/`: Screen content, kept separate from navigation.
+- `src/navigation/`: Local profile completion, onboarding draft, and navigation helpers.
 - `src/theme/`: Shared colors and spacing.
 - `src/domain/`: Pure calorie equations, validation, and target guardrails.
 - `src/components/`: Shared food form fields and catalog presentation.
@@ -62,7 +72,8 @@ migration; do not edit migrations already released. Initialization errors block
 the app and offer a retry without deleting existing data.
 
 There is one local profile. UUIDs identify records; food nutrition is expressed
-per 100 grams, portions in grams, height in centimeters, and weight in kilograms.
+per declared serving amount and unit, height in centimeters, and weight in kilograms.
+Legacy per-100-gram fields are retained for mass-based repository callers.
 Repository timestamps are normalized to UTC ISO strings. Diary entries and
 planned meals copy the food name and nutrition when created. Catalog edits or
 deletions preserve those snapshots. Plans are never counted as consumed entries.
@@ -73,7 +84,8 @@ Node SQLite adapter. They do not exercise Expo's native bridge or simulator UI.
 
 ## Calorie estimates
 
-Open the profile button on the dashboard to enter or edit your profile.
+Complete your profile during onboarding. Later, use Profile -> Edit profile or
+Profile -> Calorie goal settings to adjust the saved measurements and target.
 The profile and optional manual target are saved locally. Migration 2 preserves
 existing profile IDs and leaves new fields unset until the user completes them.
 Suggested targets are derived from the saved inputs, not stored as stale totals.
@@ -196,8 +208,8 @@ Remaining calories equal target minus consumed: positive values show remaining,
 zero indicates the target is reached, and negative values show the excess.
 The accessible progress bar caps at 100%, with a restrained warning color over target.
 
-The current profile's calculated or manual target applies to every selected date;
-historical target versions are not stored. Calorie needs remain estimates, not
+The current profile's calculated or manual target applies to every date selected
+on the dashboard; the separate history view uses dated targets. Calorie needs remain estimates, not
 measured expenditure. An incomplete or invalid profile shows consumed calories
 without inventing a target and offers profile setup.
 
@@ -242,16 +254,16 @@ idempotency, transaction rollback, migration preservation, and reopen persistenc
 
 Open **Weight and calorie history** on the dashboard. Weekly periods run Monday
 through Sunday; monthly periods use calendar months. The date picker and arrows
-select the period. Weight and Calories tabs show their respective summaries and
-dated records, with live refresh after repository writes or returning to the screen.
+select the period. Weight and Calories tabs show graphs with selected-day readouts,
+with live refresh after repository writes or returning to the screen.
 
 The weight tab records measurements in kilograms on explicit local calendar dates.
 New or edited measurements support 35-300 kg and today or earlier dates. Recording,
 editing, or deleting a measurement never updates the current profile weight.
 Multiple measurements on a date are retained, including legacy duplicates; the
-accessible SVG point chart displays their labeled daily mean. Missing dates have
-no points and are not interpolated. Every recorded measurement remains available
-in the list for editing and deletion. Period average weight uses all recorded
+accessible SVG trend chart displays their labeled daily mean. Missing dates have
+no points and break the line. Every recorded measurement remains available
+under the expandable Measurements list for editing and deletion. Period average weight uses all recorded
 measurements; change compares the first and last observed daily means and is
 unavailable without two distinct measured dates.
 
@@ -263,7 +275,9 @@ Calorie history reads consumed diary snapshots only, excluding plans. No entries
 means **No food logged**, not a measured zero. A recorded zero-calorie food can
 produce a real zero logged total. Period totals and averages use logged days only,
 with coverage counts shown; they do not imply a complete intake record. Future
-dates are listed but excluded from summaries and target comparisons.
+dates remain selectable but are excluded from graphs, summaries and target comparisons.
+Calorie bars use green for under-target, blue for at-target and a restrained warning
+color for over-target days. A dashed blue line displays known dated targets.
 
 Previous versions did not retain historical targets. This upgrade records the
 current profile's valid target on the upgrade date only; earlier targets remain
@@ -278,3 +292,28 @@ the history view uses the dated target record. Targets remain estimates.
 Tests cover date ranges across DST, leap months and years, missing versus zero
 logs, dated targets, all comparison states, weight CRUD and duplicate-day means,
 profile independence, transactional rollback, migrations, and reopen persistence.
+
+## Validation and device checks
+
+See [VALIDATION.md](VALIDATION.md) for the Step 10 validation record, automated
+coverage, remaining checks and manual iPhone checklist. The app is intentionally
+light-only; there is no dark theme to validate or enable in this step.
+
+Numeric forms accept a dot or comma as a decimal separator (never thousands
+grouping), and full-width digits. Existing domain bounds still apply. iOS form
+scroll views adjust for keyboard insets and fields offer a Done keyboard action.
+Date button labels explicitly use the Gregorian calendar, matching stored dates;
+the native picker may still follow the device's calendar preference.
+
+For an iPhone on the same Wi-Fi as the Mac:
+
+```sh
+npm start -- --lan --port 8088
+```
+
+Scan the QR code using the Camera app and open it in a compatible Expo Go build.
+Use the URL printed by the current server; the Mac's LAN address can change.
+Allow local-network access on iOS if requested. Expo Go development loading needs
+Metro; it is not a standalone offline installation. No account or server is
+required for app data, and no food-provider API key is used. A standalone iPhone
+build requires Apple development signing and suitable provisioning.

@@ -81,7 +81,7 @@ export function PlanScreen() {
   const totals = dailyTotals(day?.entries ?? []);
   const progress = day?.target ? calorieProgress(day.target, totals.total) : null;
 
-  return <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.screen}>
+  return <SafeAreaView edges={['left', 'right']} style={styles.screen}>
     <ScrollView contentContainerStyle={styles.content}>
       <View style={ui.heading}>
         <CalendarClock size={24} color={planningColor} />
@@ -107,7 +107,7 @@ export function PlanScreen() {
             {progress ? <>
               <Text style={styles.body}>Estimated target: {caloriesLabel(progress.target)}</Text>
               <Text style={progress.state === 'over' ? styles.error : styles.detail}>{progress.state === 'reached' ? 'Plan meets target' : `${caloriesLabel(Math.abs(progress.remaining))} ${progress.state === 'over' ? 'over' : 'below'} target`}</Text>
-            </> : <Pressable accessibilityRole="button" style={[ui.toolbarButton, ui.targetAction]} onPress={() => router.push('/profile')}><Text style={ui.actionText}>Set calorie target</Text></Pressable>}
+            </> : <Pressable accessibilityRole="button" style={[ui.toolbarButton, ui.targetAction]} onPress={() => router.push('/goal-settings')}><Text style={ui.actionText}>Set calorie target</Text></Pressable>}
             {day.entries.some((entry) => entry.eaten_at) ? <Text style={styles.detail}>Includes meals already logged</Text> : null}
           </View>
           {meals.map((meal) => {

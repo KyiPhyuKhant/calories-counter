@@ -5,7 +5,7 @@ import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from '
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { foodStyles } from '@/components/foodUi';
-import { localCalendarDate, meals, validateCalendarDate, type Meal } from '@/domain/diary';
+import { calendarDateLabel, localCalendarDate, meals, validateCalendarDate, type Meal } from '@/domain/diary';
 import { theme } from '@/theme/theme';
 
 export function DiaryIconButton({ icon: Icon, label, onPress, disabled = false }: {
@@ -22,10 +22,10 @@ export function DiaryDateField({ value, onChange, disabled = false }: { value: s
   const [pending, setPending] = useState(() => validateCalendarDate(value));
   const date = validateCalendarDate(value);
   return <View style={diaryStyles.dateField}>
-    <Pressable accessibilityRole="button" accessibilityLabel={`Choose date, ${value}`} disabled={disabled}
+    <Pressable accessibilityRole="button" accessibilityLabel={`Choose date, ${value}`} accessibilityState={{ disabled }} disabled={disabled}
       style={diaryStyles.dateButton} onPress={() => { setPending(date); setOpen(true); }}>
       <CalendarDays size={20} color={theme.colors.accent} />
-      <Text style={diaryStyles.dateText}>{date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</Text>
+      <Text style={diaryStyles.dateText}>{calendarDateLabel(value)}</Text>
     </Pressable>
     <Modal visible={open} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setOpen(false)}>
       <SafeAreaView style={foodStyles.screen}>
@@ -47,7 +47,7 @@ export function DiaryMealField({ value, onChange, disabled }: { value: Meal; onC
   const [open, setOpen] = useState(false);
   return <View style={foodStyles.field}>
     <Text style={foodStyles.label}>Meal</Text>
-    <Pressable accessibilityRole="button" accessibilityLabel="Choose meal" disabled={disabled} style={foodStyles.input} onPress={() => setOpen(true)}>
+    <Pressable accessibilityRole="button" accessibilityLabel={`Choose meal, ${mealLabel(value)}`} accessibilityState={{ disabled }} disabled={disabled} style={foodStyles.input} onPress={() => setOpen(true)}>
       <Text style={foodStyles.body}>{mealLabel(value)}</Text></Pressable>
     <Modal visible={open} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setOpen(false)}>
       <SafeAreaView style={foodStyles.screen}><ScrollView contentContainerStyle={foodStyles.content}>
@@ -72,7 +72,7 @@ export const diaryStyles = StyleSheet.create({
   picker: { height: 216, width: '100%' },
   dateRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   section: { borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 16, gap: 8 },
-  mealHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  mealHeader: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
   grow: { flex: 1 },
   entryRow: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 8 },
   entry: { flex: 1, gap: 4, paddingVertical: 8 },

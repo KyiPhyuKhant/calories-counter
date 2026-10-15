@@ -8,7 +8,7 @@ function navigation(canGoBack) {
     calls,
     canGoBack: () => canGoBack,
     back: () => calls.push('back'),
-    dismissTo: (href) => calls.push(href),
+    navigate: (href) => calls.push(href),
   };
 }
 
@@ -24,7 +24,7 @@ test('Back on a directly opened screen falls back to Home', () => {
   assert.deepEqual(router.calls, ['/']);
 });
 
-test('Home dismisses to the root rather than pushing another Home screen', () => {
+test('Home navigates to the root tab rather than pushing another Home screen', () => {
   for (const hasHistory of [true, false]) {
     const router = navigation(hasHistory);
     goHome(router);

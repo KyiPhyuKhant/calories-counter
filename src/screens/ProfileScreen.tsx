@@ -1,43 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable,
-  ScrollView, StyleSheet, Switch, Text, TextInput, View,
+  ActivityIndicator, Modal, Pressable,
+  ScrollView, StyleSheet, Switch, Text, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useRepositories } from '@/data/DatabaseProvider';
 import {
   activityLevels, calculateCalorieGoal, validateCalorieProfile,
-  type ActivityLevel, type CalorieProfile, type EquationSex, type Goal,
+  type ActivityLevel, type EquationSex, type Goal,
 } from '@/domain/calorieGoal';
 import { theme } from '@/theme/theme';
-
-type Form = {
-  sex: EquationSex | '';
-  age: string;
-  height_cm: string;
-  current_weight_kg: string;
-  target_weight_kg: string;
-  activity_level: ActivityLevel;
-  goal: Goal;
-  manual_calorie_target: string;
-  useManual: boolean;
-};
-const emptyForm: Form = {
-  sex: '', age: '', height_cm: '', current_weight_kg: '', target_weight_kg: '',
-  activity_level: 'sedentary', goal: 'maintain', manual_calorie_target: '', useManual: false,
-};
-function number(value: string) {
-  return /^\d+(\.\d+)?$/.test(value.trim()) ? Number(value) : NaN;
-}
-function toInput(form: Form): CalorieProfile {
-  return {
-    sex: form.sex as EquationSex, age: number(form.age), height_cm: number(form.height_cm),
-    current_weight_kg: number(form.current_weight_kg), target_weight_kg: number(form.target_weight_kg),
-    activity_level: form.activity_level, goal: form.goal,
-    manual_calorie_target: form.useManual ? number(form.manual_calorie_target) : null,
-  };
-}
+import { FormInput } from '@/components/FormInput';
+import { calorieProfileFromForm, createProfileForm, type ProfileForm } from '@/navigation/profileSetup';
 
 function NumericField({ label, value, onChange, error, disabled, integer = false }: {
   label: string; value: string; onChange: (value: string) => void;
@@ -46,7 +21,7 @@ function NumericField({ label, value, onChange, error, disabled, integer = false
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput
+      <FormInput error={error}
         accessibilityLabel={label} value={value} onChangeText={onChange}
         keyboardType={integer ? 'number-pad' : 'decimal-pad'} editable={!disabled}
         style={[styles.input, error ? styles.invalidInput : undefined]} maxLength={8}
@@ -78,13 +53,14 @@ function Segments<T extends string>({ label, value, options, onChange, disabled 
   );
 }
 
-export function ProfileScreen() {
+export function ProfileScreen({ mode = 'profile' }: { mode?: 'profile' | 'goal' }) {
   const { profiles } = useRepositories();
-  const [form, setForm] = useState<Form>(emptyForm);
+  const [form, setForm] = useState<ProfileForm>(createProfileForm);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [submitted, setSubmitted] = useState(false);
   const [message, setMessage] = useState('');
   const [activityOpen, setActivityOpen] = useState(false);
@@ -93,15 +69,7 @@ export function ProfileScreen() {
     let active = true;
     profiles.get().then((profile) => {
       if (!active) return;
-      if (profile) setForm({
-        sex: profile.sex ?? '', age: profile.age?.toString() ?? '',
-        height_cm: profile.height_cm?.toString() ?? '',
-        current_weight_kg: profile.current_weight_kg?.toString() ?? '',
-        target_weight_kg: profile.target_weight_kg?.toString() ?? '',
-        activity_level: profile.activity_level ?? 'sedentary', goal: profile.goal ?? 'maintain',
-        manual_calorie_target: profile.manual_calorie_target?.toString() ?? '',
-        useManual: profile.manual_calorie_target !== null,
-      });
+      setForm(createProfileForm(profile));
       setLoading(false);
     }).catch(() => {
       if (active) { setLoadFailed(true); setLoading(false); }
@@ -109,11 +77,11 @@ export function ProfileScreen() {
     return () => { active = false; };
   }, [profiles, loadAttempt]);
 
-  function update<K extends keyof Form>(key: K, value: Form[K]) {
+  function update<K extends keyof ProfileForm>(key: K, value: ProfileForm[K]) {
     setForm((previous) => ({ ...previous, [key]: value }));
     setMessage('');
   }
-  const input = toInput(form);
+  const input = calorieProfileFromForm(form);
   const errors = validateCalorieProfile(input);
   const estimate = Object.keys(errors).length ? null : calculateCalorieGoal(input);
   // Keep the suggested estimate visible while a manual value is being edited.
@@ -122,20 +90,21 @@ export function ProfileScreen() {
     ? null : calculateCalorieGoal(suggestedInput);
 
   async function save() {
+    if (savingRef.current) return;
     setSubmitted(true);
     setMessage('');
     if (Object.keys(errors).length) {
       setMessage('Check the highlighted fields before saving.');
       return;
     }
-    setSaving(true);
+    savingRef.current = true; setSaving(true);
     try {
       await profiles.saveCalorieProfile(input);
       setMessage('Profile saved on this device.');
     } catch {
       setMessage('Could not save your profile. Your edits are still here; please try again.');
     } finally {
-      setSaving(false);
+      savingRef.current = false; setSaving(false);
     }
   }
 
@@ -150,22 +119,22 @@ export function ProfileScreen() {
   );
 
   return (
-    <SafeAreaView edges={['bottom', 'left', 'right']} style={styles.screen}>
-      <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={styles.content}>
-          <Text accessibilityRole="header" style={styles.title}>Your daily goal</Text>
+    <SafeAreaView edges={['left', 'right']} style={styles.screen}>
+        <ScrollView automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={styles.content}>
+          <Text accessibilityRole="header" style={styles.title}>{mode === 'goal' ? 'Your daily goal' : 'Your profile'}</Text>
           <Text style={styles.body}>Estimated needs, not measured calorie burn. For adults 18+; not intended for pregnancy or breastfeeding. Medical conditions may need individual advice.</Text>
 
-          <Segments label="Sex used for Mifflin-St Jeor" value={form.sex} disabled={saving}
+          {mode === 'profile' ? <><Segments label="Sex used for Mifflin-St Jeor" value={form.sex} disabled={saving}
             options={[{ value: 'female', label: 'Female' }, { value: 'male', label: 'Male' }]}
             onChange={(value: EquationSex) => update('sex', value)} />
-          {submitted && errors.sex ? <Text style={styles.error}>{errors.sex}</Text> : null}
+          {submitted && errors.sex ? <Text accessibilityRole="alert" style={styles.error}>{errors.sex}</Text> : null}
           <NumericField label="Age (years)" value={form.age} integer disabled={saving}
             onChange={(value) => update('age', value)} error={submitted ? errors.age : undefined} />
           <NumericField label="Height (cm)" value={form.height_cm} disabled={saving}
             onChange={(value) => update('height_cm', value)} error={submitted ? errors.height_cm : undefined} />
           <NumericField label="Current weight (kg)" value={form.current_weight_kg} disabled={saving}
             onChange={(value) => update('current_weight_kg', value)} error={submitted ? errors.current_weight_kg : undefined} />
+          </> : null}
           <NumericField label="Target weight (kg)" value={form.target_weight_kg} disabled={saving}
             onChange={(value) => update('target_weight_kg', value)} error={submitted ? errors.target_weight_kg : undefined} />
 
@@ -180,7 +149,7 @@ export function ProfileScreen() {
           <Segments label="Goal" value={form.goal} disabled={saving}
             options={[{ value: 'lose', label: 'Lose' }, { value: 'maintain', label: 'Maintain' }, { value: 'gain', label: 'Gain' }]}
             onChange={(value: Goal) => update('goal', value)} />
-          {submitted && errors.goal ? <Text style={styles.error}>{errors.goal}</Text> : null}
+          {submitted && errors.goal ? <Text accessibilityRole="alert" style={styles.error}>{errors.goal}</Text> : null}
           {submitted && errors.estimate ? <Text accessibilityRole="alert" style={styles.error}>{errors.estimate}</Text> : null}
 
           {suggestion ? (
@@ -206,11 +175,10 @@ export function ProfileScreen() {
           {estimate && form.useManual ? <Text style={styles.body}>Your selected target: {estimate.target} kcal/day</Text> : null}
           <Pressable accessibilityRole="button" accessibilityState={{ disabled: saving }} disabled={saving}
             style={[styles.button, saving ? styles.disabled : undefined]} onPress={save}>
-            <Text style={styles.buttonText}>{saving ? 'Saving...' : 'Save profile'}</Text>
+            <Text style={styles.buttonText}>{saving ? 'Saving...' : mode === 'goal' ? 'Save calorie goal' : 'Save profile'}</Text>
           </Pressable>
           {message ? <Text accessibilityRole="alert" style={styles.body}>{message}</Text> : null}
         </ScrollView>
-      </KeyboardAvoidingView>
       <Modal visible={activityOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setActivityOpen(false)}>
         <SafeAreaView style={styles.screen}>
           <ScrollView contentContainerStyle={styles.content}>

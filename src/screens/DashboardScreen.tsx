@@ -1,14 +1,18 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ChevronLeft, ChevronRight, BookOpen, Search, UserRound, CalendarClock, ChartNoAxesCombined } from 'lucide-react-native';
+import { ChevronRight, BookOpen, Search, UserRound, CalendarClock, ChartNoAxesCombined } from 'lucide-react-native';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { caloriesLabel, DiaryDateField, DiaryIconButton, diaryStyles, mealLabel } from '@/components/diaryUi';
+import { caloriesLabel, diaryStyles, mealLabel } from '@/components/diaryUi';
+import { AppHeader } from '@/components/ui/AppHeader';
+import { AppCard } from '@/components/ui/AppCard';
+import { CalorieProgressRing } from '@/components/ui/CalorieProgressRing';
+import { DateNavigator } from '@/components/ui/DateNavigator';
 import { foodStyles } from '@/components/foodUi';
 import { useRepositories } from '@/data/DatabaseProvider';
 import type { Repositories } from '@/data/repositories';
-import { localCalendarDate, meals, shiftCalendarDate } from '@/domain/diary';
+import { localCalendarDate, meals } from '@/domain/diary';
 import { homeDestinations } from '@/navigation/navigation';
 import { theme } from '@/theme/theme';
 
@@ -52,35 +56,23 @@ export function DashboardScreen() {
     else { setError(''); setDate(value); }
   }
 
-  return <SafeAreaView style={foodStyles.screen}>
+  return <SafeAreaView edges={['top', 'left', 'right']} style={foodStyles.screen}>
     <ScrollView contentContainerStyle={foodStyles.content}>
-      <View style={styles.header}>
-        <View style={diaryStyles.grow}>
-          <Text style={foodStyles.detail}>CALORIE COUNTER</Text>
-          <Text accessibilityRole="header" style={foodStyles.title}>Home</Text>
-        </View>
-      </View>
-      <View style={diaryStyles.dateRow}>
-        <DiaryIconButton icon={ChevronLeft} label="Previous day" disabled={date === '1900-01-01'} onPress={() => selectDate(shiftCalendarDate(date, -1))} />
-        <DiaryDateField value={date} onChange={selectDate} />
-        <DiaryIconButton icon={ChevronRight} label="Next day" disabled={date === '2100-12-31'} onPress={() => selectDate(shiftCalendarDate(date, 1))} />
-      </View>
+      <AppHeader title="Home" subtitle="Calorie Counter" />
+      <DateNavigator value={date} onChange={selectDate} />
       {date !== localCalendarDate() ? <Pressable accessibilityRole="button" onPress={() => selectDate(localCalendarDate())} style={styles.today}><Text style={styles.link}>Today</Text></Pressable> : null}
       {error ? <View style={foodStyles.field}>
         <Text accessibilityRole="alert" style={foodStyles.error}>{error}</Text>
         <Pressable accessibilityRole="button" style={foodStyles.button} onPress={() => setRetry((current) => current + 1)}><Text style={foodStyles.buttonText}>Try again</Text></Pressable>
       </View> : !day ? <ActivityIndicator accessibilityLabel="Loading daily summary" color={theme.colors.accent} /> : <>
-        <View style={styles.summary}>
+        <AppCard style={styles.summary}>
           <Text style={foodStyles.label}>{progress ? over ? 'Over target' : progress.state === 'reached' ? 'Target reached' : 'Remaining' : 'Calories consumed'}</Text>
           <Text accessibilityLiveRegion="polite" style={[styles.balance, over && styles.warning]}>
             {progress ? progress.state === 'reached' ? '0 kcal remaining' : balanceLabel(over ? progress.over : progress.remaining) : caloriesLabel(day.totals.total)}
           </Text>
           {progress ? <>
-            <View accessibilityRole="progressbar" accessibilityLabel="Daily calorie progress"
-              accessibilityValue={{ min: 0, max: 100, now: Math.round(progress.fraction * 100), text: `${caloriesLabel(progress.consumed)} consumed of ${caloriesLabel(progress.target)} target${over ? `, ${balanceLabel(progress.over)} over target` : ''}` }}
-              style={styles.track}>
-              <View style={[styles.fill, { width: `${progress.fraction * 100}%` }, over && styles.warningFill]} />
-            </View>
+            <CalorieProgressRing progress={progress.fraction} value={caloriesLabel(progress.consumed)} caption={`of ${caloriesLabel(progress.target)}`}
+              overTarget={over} accessibilityLabel={`Daily calorie progress${over ? `, ${balanceLabel(progress.over)} over target` : ''}`} />
             <View style={styles.metrics}>
               <View style={styles.metric}><Text style={foodStyles.detail}>Consumed</Text><Text style={foodStyles.label}>{caloriesLabel(progress.consumed)}</Text></View>
               <View style={styles.metric}><Text style={foodStyles.detail}>Daily target</Text><Text style={foodStyles.label}>{caloriesLabel(progress.target)}</Text></View>
@@ -88,9 +80,9 @@ export function DashboardScreen() {
             <Text style={foodStyles.detail}>Current profile target; calorie needs are estimates.</Text>
           </> : <>
             <Text style={foodStyles.body}>No daily target set.</Text>
-            <Pressable accessibilityRole="button" style={foodStyles.button} onPress={() => router.push('/profile')}><Text style={foodStyles.buttonText}>Set calorie target</Text></Pressable>
+            <Pressable accessibilityRole="button" style={foodStyles.button} onPress={() => router.push('/goal-settings')}><Text style={foodStyles.buttonText}>Set calorie target</Text></Pressable>
           </>}
-        </View>
+        </AppCard>
       </>}
       <View style={styles.shortcuts}>
         {homeDestinations(date).slice(0, 2).map((destination) => {
@@ -98,7 +90,7 @@ export function DashboardScreen() {
           const Icon = planned ? CalendarClock : BookOpen;
           return <Pressable key={destination.key} accessibilityRole="button" onPress={() => router.push(destination.href)}
             style={({ pressed }) => [styles.shortcut, planned ? styles.planningShortcut : styles.diaryShortcut, pressed && styles.pressed]}>
-            <Icon size={28} color={planned ? '#2563A0' : theme.colors.accent} />
+            <Icon size={28} color={planned ? theme.colors.planning : theme.colors.accent} />
             <Text style={styles.destinationLabel}>{destination.label}</Text>
             <Text style={foodStyles.detail}>{planned ? 'Upcoming' : 'Eaten'}</Text>
           </Pressable>;
@@ -130,24 +122,20 @@ export function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   today: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start', paddingHorizontal: 12 },
   shortcuts: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  shortcut: { flexGrow: 1, flexBasis: 145, gap: 10, padding: 16, borderRadius: 8, minHeight: 132 },
+  shortcut: { flexGrow: 1, flexBasis: 145, gap: 10, padding: 16, borderRadius: theme.radius.card, minHeight: 132 },
   diaryShortcut: { backgroundColor: theme.colors.accentSurface },
-  planningShortcut: { backgroundColor: '#EAF2FB' },
+  planningShortcut: { backgroundColor: theme.colors.planningSurface },
   destination: { minHeight: 52, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: 1, borderColor: theme.colors.border },
   destinationLabel: { fontSize: 17, lineHeight: 24, fontWeight: '600', color: theme.colors.text },
   secondaryLabel: { flex: 1, fontSize: 16, lineHeight: 24, color: theme.colors.text },
   pressed: { opacity: 0.6 },
   mealRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 36 },
   link: { color: theme.colors.accent, fontSize: 17, fontWeight: '600', flexShrink: 1 },
-  summary: { gap: 12, paddingVertical: 8 },
+  summary: { gap: 12 },
   balance: { color: theme.colors.accent, fontSize: 30, lineHeight: 38, fontWeight: '700' },
-  track: { height: 10, borderRadius: 5, overflow: 'hidden', backgroundColor: theme.colors.accentSurface },
-  fill: { height: '100%', backgroundColor: theme.colors.accent },
-  warning: { color: '#99452B' },
-  warningFill: { backgroundColor: '#A65A3C' },
+  warning: { color: theme.colors.warning },
   metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 20 },
   metric: { flexGrow: 1, flexBasis: 120, gap: 4 },
 });

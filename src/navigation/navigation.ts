@@ -3,11 +3,11 @@ import type { Href } from 'expo-router';
 type Navigation = {
   canGoBack: () => boolean;
   back: () => void;
-  dismissTo: (href: Href) => void;
+  navigate: (href: Href) => void;
 };
 
 export function goHome(router: Navigation) {
-  router.dismissTo('/');
+  router.navigate('/');
 }
 
 export function goBack(router: Navigation) {

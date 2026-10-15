@@ -56,7 +56,7 @@ export function DiaryScreen() {
   const entries = result.date === date ? result.entries : [];
   const totals = dailyTotals(entries);
   const busy = loading || (result.date !== date && !error);
-  return <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.screen}>
+  return <SafeAreaView edges={['left', 'right']} style={styles.screen}>
     <ScrollView contentContainerStyle={styles.content}>
       <View style={ui.heading}>
         <BookOpen size={24} color={theme.colors.accent} />

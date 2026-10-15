@@ -1,14 +1,18 @@
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Plus, Search } from 'lucide-react-native';
 
-import { foodSourceLabel, foodStyles as styles } from '@/components/foodUi';
+import { foodStyles as styles } from '@/components/foodUi';
 import { useRepositories } from '@/data/DatabaseProvider';
 import type { Food } from '@/domain/food';
 import { theme } from '@/theme/theme';
+import { AppButton } from '@/components/ui/AppButton';
+import { AppInput } from '@/components/ui/AppInput';
+import { FoodListItem } from '@/components/ui/FoodListItem';
 
-export function FoodCatalogScreen({ onSelect }: { onSelect?: (food: Food) => void } = {}) {
+export function FoodCatalogScreen({ onSelect, onAddCustom }: { onSelect?: (food: Food) => void; onAddCustom?: () => void } = {}) {
   const { foods } = useRepositories();
   const router = useRouter();
   const [query, setQuery] = useState('');
@@ -47,24 +51,18 @@ export function FoodCatalogScreen({ onSelect }: { onSelect?: (food: Food) => voi
     finally { if (request === generation.current) setMoreLoading(false); }
   }
 
-  return <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.screen}>
+  return <SafeAreaView edges={['left', 'right']} style={styles.screen}>
     <View style={local.header}>
-      <TextInput accessibilityLabel="Search foods by name" placeholder="Search foods" value={query} maxLength={120}
+      <AppInput label="Search foods by name" hideLabel variant="search" icon={Search} placeholder="Search foods" value={query} maxLength={120}
         onChangeText={(value) => { setLoading(true); setQuery(value); }} autoCorrect={false}
-        returnKeyType="search" clearButtonMode="while-editing" style={styles.input} />
-      <Pressable accessibilityRole="button" style={styles.button} onPress={() => router.push('/foods/edit')}>
-        <Text style={styles.buttonText}>Add custom food</Text>
-      </Pressable>
+        returnKeyType="search" clearButtonMode="while-editing" />
+      <AppButton title="Add custom food" icon={Plus} onPress={onAddCustom ?? (() => router.push('/foods/edit'))} />
       <Text style={styles.detail}>Offline catalog. Demo foods contain invented, unverified values.</Text>
     </View>
-    <FlatList data={loading ? [] : items} keyExtractor={(food) => food.id} keyboardShouldPersistTaps="handled"
+    <FlatList data={loading ? [] : items} keyExtractor={(food) => food.id} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets
       contentContainerStyle={local.list}
-      renderItem={({ item }) => <Pressable accessibilityRole="button" accessibilityLabel={`${onSelect ? 'Select' : 'View'} ${item.name}`}
-        style={local.row} onPress={() => onSelect ? onSelect(item) : router.push({ pathname: '/foods/[id]', params: { id: item.id } })}>
-        <Text style={styles.label}>{item.name}</Text>
-        <Text style={styles.body}>{Number(item.calories.toFixed(1))} kcal / {item.serving_amount} {item.serving_unit}</Text>
-        <Text style={styles.detail}>{foodSourceLabel(item)}</Text>
-      </Pressable>}
+      renderItem={({ item }) => <FoodListItem food={item} selecting={Boolean(onSelect)}
+        onPress={() => onSelect ? onSelect(item) : router.push({ pathname: '/foods/[id]', params: { id: item.id } })} />}
       ListEmptyComponent={loading ? <ActivityIndicator accessibilityLabel="Searching foods" color={theme.colors.accent} />
         : !error ? <Text style={styles.body}>No foods found.</Text> : null}
       ListFooterComponent={<View style={local.footer}>
@@ -79,6 +77,5 @@ export function FoodCatalogScreen({ onSelect }: { onSelect?: (food: Food) => voi
 const local = StyleSheet.create({
   header: { padding: 24, gap: 16, width: '100%', maxWidth: 560, alignSelf: 'center' },
   list: { paddingHorizontal: 24, paddingBottom: 24, width: '100%', maxWidth: 560, alignSelf: 'center' },
-  row: { paddingVertical: 16, gap: 4, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
   footer: { paddingVertical: 20, gap: 16 },
 });

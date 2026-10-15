@@ -1,40 +1,34 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { ActivityIndicator, View, Text } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { NavigationButton } from '@/components/NavigationButton';
+import { AppButton } from '@/components/ui/AppButton';
+import { foodStyles } from '@/components/foodUi';
 import { DatabaseProvider } from '@/data/DatabaseProvider';
+import { LocalProfileProvider, useLocalProfile } from '@/navigation/LocalProfileProvider';
 import { theme } from '@/theme/theme';
+
+export function ProfileNavigator() {
+  const { status, completed, reload } = useLocalProfile();
+  if (status !== 'ready') return <SafeAreaView style={foodStyles.screen}><View style={foodStyles.status}>
+    {status === 'loading' ? <ActivityIndicator accessibilityLabel="Opening your local profile" color={theme.colors.accent} /> : <>
+      <Text accessibilityRole="alert" style={foodStyles.error}>Could not open your local profile. Your data has not been changed.</Text>
+      <AppButton title="Try again" onPress={() => { void reload().catch(() => {}); }} />
+    </>}
+  </View></SafeAreaView>;
+  return <Stack screenOptions={{ headerShown: false }}>
+    <Stack.Protected guard={completed}><Stack.Screen name="(tabs)" /></Stack.Protected>
+    <Stack.Protected guard={!completed}><Stack.Screen name="onboarding" /></Stack.Protected>
+  </Stack>;
+}
 
 export default function RootLayout() {
   return (
     <>
       <StatusBar style="dark" />
       <DatabaseProvider>
-        <Stack
-          screenOptions={{
-            headerShown: true,
-            headerBackVisible: false,
-            headerLeft: () => <NavigationButton destination="back" />,
-            headerRight: () => <NavigationButton destination="home" />,
-            headerTintColor: theme.colors.accent,
-            headerStyle: { backgroundColor: theme.colors.background },
-            contentStyle: { backgroundColor: theme.colors.background },
-          }}
-        >
-          <Stack.Screen name="index" options={{ headerShown: false, title: 'Home' }} />
-          <Stack.Screen name="profile" options={{ headerShown: true, title: 'Your profile', headerTintColor: theme.colors.accent }} />
-          <Stack.Screen name="history/index" options={{ headerShown: true, title: 'History', headerTintColor: theme.colors.accent }} />
-          <Stack.Screen name="history/weight" options={{ headerShown: true, title: 'Weight measurement', headerTintColor: theme.colors.accent }} />
-          <Stack.Screen name="diary/index" options={{ headerShown: true, title: 'Food diary', headerTintColor: theme.colors.accent }} />
-          <Stack.Screen name="diary/select" options={{ headerShown: true, title: 'Select food', headerTintColor: theme.colors.accent }} />
-          <Stack.Screen name="diary/edit" options={{ headerShown: true, title: 'Diary entry', headerTintColor: theme.colors.accent }} />
-          <Stack.Screen name="plans/index" options={{ headerShown: true, title: 'Meal plans', headerTintColor: theme.colors.accent }} />
-          <Stack.Screen name="plans/select" options={{ headerShown: true, title: 'Select food', headerTintColor: theme.colors.accent }} />
-          <Stack.Screen name="plans/edit" options={{ headerShown: true, title: 'Planned food', headerTintColor: theme.colors.accent }} />
-          <Stack.Screen name="foods/index" options={{ headerShown: true, title: 'Food catalog', headerTintColor: theme.colors.accent }} />
-          <Stack.Screen name="foods/[id]" options={{ headerShown: true, title: 'Food details', headerTintColor: theme.colors.accent }} />
-          <Stack.Screen name="foods/edit" options={{ headerShown: true, title: 'Custom food', headerTintColor: theme.colors.accent }} />
-        </Stack>
+        <LocalProfileProvider><ProfileNavigator /></LocalProfileProvider>
       </DatabaseProvider>
     </>
   );

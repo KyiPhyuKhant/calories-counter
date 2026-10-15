@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { caloriesLabel, DiaryDateField, DiaryIconButton, diaryStyles } from '@/components/diaryUi';
 import { foodStyles as styles } from '@/components/foodUi';
 import { HistoryChart } from '@/components/HistoryChart';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { useRepositories } from '@/data/DatabaseProvider';
 import type { Repositories } from '@/data/repositories';
 import type { WeightEntry } from '@/data/weightRepository';
@@ -16,12 +17,12 @@ import { theme } from '@/theme/theme';
 type History = Awaited<ReturnType<Repositories['history']['getPeriod']>>;
 const kg = (value: number | null) => value === null ? 'No measurements' : `${Number(value.toFixed(2))} kg`;
 
-export function HistoryScreen() {
+export function HistoryScreen({ initialView = 'weight' }: { initialView?: 'weight' | 'calories' }) {
   const params = useLocalSearchParams<{ date?: string; period?: string; view?: string }>();
   const [openedDate] = useState(localCalendarDate);
   const date = typeof params.date === 'string' ? params.date : openedDate;
   const period = params.period === 'month' ? 'month' : 'week';
-  const view = params.view === 'calories' ? 'calories' : 'weight';
+  const view = params.view === 'calories' || params.view === 'weight' ? params.view : initialView;
   const repositories = useRepositories(); const router = useRouter();
   const [result, setResult] = useState<{ key: string; history: History } | null>(null);
   const [error, setError] = useState(''); const [retry, setRetry] = useState(0);
@@ -60,12 +61,11 @@ export function HistoryScreen() {
   const range = historyRange(date, period);
   const history = result?.key === key ? result.history : null;
   const summary = history?.summary;
-  return <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.screen}>
+  return <SafeAreaView edges={['left', 'right']} style={styles.screen}>
     <ScrollView contentContainerStyle={[styles.content, historyStyles.content]}>
-      <View style={historyStyles.segmented}>
-        {(['week', 'month'] as const).map((choice) => <Pressable key={choice} accessibilityRole="radio" accessibilityState={{ checked: period === choice }}
-          style={[historyStyles.segment, period === choice && historyStyles.activeSegment]} onPress={() => { setError(''); router.setParams({ period: choice }); }}><Text style={historyStyles.segmentLabel}>{choice === 'week' ? 'Weekly' : 'Monthly'}</Text></Pressable>)}
-      </View>
+      <SegmentedControl label="History period" value={period} role="radio"
+        options={[{ value: 'week', label: 'Weekly' }, { value: 'month', label: 'Monthly' }]}
+        onChange={(choice) => { setError(''); router.setParams({ period: choice }); }} />
       <View style={diaryStyles.dateRow}>
         <DiaryIconButton icon={ChevronLeft} label={`Previous ${period}`} disabled={range.start === '1900-01-01'} onPress={() => selectDate(shiftHistoryPeriod(date, period, -1))} />
         <DiaryDateField value={date} onChange={selectDate} />
@@ -73,10 +73,9 @@ export function HistoryScreen() {
       </View>
       <Text style={styles.detail}>{range.start} to {range.end}</Text>
       {date !== localCalendarDate() ? <Pressable accessibilityRole="button" style={historyStyles.today} onPress={() => selectDate(localCalendarDate())}><Text style={historyStyles.link}>Today</Text></Pressable> : null}
-      <View style={historyStyles.segmented}>
-        {(['weight', 'calories'] as const).map((choice) => <Pressable key={choice} accessibilityRole="tab" accessibilityState={{ selected: view === choice }}
-          style={[historyStyles.segment, view === choice && historyStyles.activeSegment]} onPress={() => router.setParams({ view: choice })}><Text style={historyStyles.segmentLabel}>{choice === 'weight' ? 'Weight' : 'Calories'}</Text></Pressable>)}
-      </View>
+      <SegmentedControl label="History view" value={view}
+        options={[{ value: 'weight', label: 'Weight' }, { value: 'calories', label: 'Calories' }]}
+        onChange={(choice) => router.setParams({ view: choice })} />
       {error ? <View style={styles.field}><Text accessibilityRole="alert" style={styles.error}>{error}</Text>
         <Pressable accessibilityRole="button" style={styles.button} onPress={() => setRetry((current) => current + 1)}><Text style={styles.buttonText}>Try again</Text></Pressable></View>
         : !history || !summary ? <ActivityIndicator accessibilityLabel="Loading history" color={theme.colors.accent} /> : view === 'weight' ? <>
@@ -123,10 +122,6 @@ export function HistoryScreen() {
 
 const historyStyles = StyleSheet.create({
   content: { gap: 16 },
-  segmented: { flexDirection: 'row', padding: 4, gap: 4, backgroundColor: theme.colors.border, borderRadius: 8 },
-  segment: { flex: 1, minHeight: 44, padding: 8, justifyContent: 'center', alignItems: 'center', borderRadius: 6 },
-  activeSegment: { backgroundColor: theme.colors.surface },
-  segmentLabel: { fontSize: 16, lineHeight: 24, fontWeight: '600', color: theme.colors.text, textAlign: 'center' },
   today: { minHeight: 44, paddingHorizontal: 12, justifyContent: 'center', alignSelf: 'flex-start' },
   link: { fontSize: 17, fontWeight: '600', color: theme.colors.accent },
   under: { fontSize: 16, lineHeight: 24, color: theme.colors.accent },
