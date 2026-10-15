@@ -118,6 +118,7 @@ test('food selection and custom-food creation retain the originating tab, date a
     }) };
     render(`src/app/(tabs)/${owner}/select.tsx`, 'default', {}, {
       'expo-router': routeMocks, '@/screens/FoodCatalogScreen': { FoodCatalogScreen: host('Catalog') },
+      '@/screens/FoodEditorScreen': { FoodEditorScreen: host('Editor') },
     });
     const catalog = elements.find(({ type }) => type === 'Catalog').props;
     catalog.onAddCustom(); catalog.onSelect({ id: 'food-1' });
@@ -125,11 +126,34 @@ test('food selection and custom-food creation retain the originating tab, date a
       { pathname: `/${owner}/custom-food`, params: { date, meal } },
       { pathname: `/${owner}/edit`, params: { date, meal, foodId: 'food-1' } },
     ]);
-    render('src/screens/CustomFoodForEntryScreen.tsx', 'CustomFoodForEntryScreen', { planning: owner === 'plans' }, {
+    render(`src/app/(tabs)/${owner}/custom-food.tsx`, 'default', {}, {
       'expo-router': routeMocks, '@/screens/FoodEditorScreen': { FoodEditorScreen: host('Editor') },
+      '@/screens/FoodCatalogScreen': { FoodCatalogScreen: host('Catalog') },
     });
     elements.find(({ type }) => type === 'Editor').props.onCreated('new-food');
     assert.deepEqual(calls.at(-1), { pathname: `/${owner}/edit`, params: { foodId: 'new-food', date, meal } });
+  }
+});
+
+test('all food-entry routes preserve date validation and the default snacks meal', () => {
+  for (const owner of ['diary', 'plans']) {
+    for (const action of ['select', 'custom-food']) {
+      const path = `src/app/(tabs)/${owner}/${action}.tsx`;
+      const calls = [];
+      const mocks = {
+        'expo-router': { ...routerMock, useLocalSearchParams: () => ({ date: '2026-02-30' }),
+          useRouter: () => ({ replace: (href) => calls.push(href) }) },
+        '@/screens/FoodCatalogScreen': { FoodCatalogScreen: host('Catalog') },
+        '@/screens/FoodEditorScreen': { FoodEditorScreen: host('Editor') },
+      };
+      assert.match(render(path, 'default', {}, mocks).markup, /ရက်စွဲ မမှန်ပါ။/);
+      assert.equal(elements.some(({ type }) => type === 'Catalog' || type === 'Editor'), false);
+      mocks['expo-router'].useLocalSearchParams = () => ({ date: '2026-10-18', meal: 'invalid' });
+      render(path, 'default', {}, mocks);
+      if (action === 'select') elements.find(({ type }) => type === 'Catalog').props.onSelect({ id: 'food' });
+      else elements.find(({ type }) => type === 'Editor').props.onCreated('food');
+      assert.deepEqual(calls, [{ pathname: `/${owner}/edit`, params: { foodId: 'food', date: '2026-10-18', meal: 'snacks' } }]);
+    }
   }
 });
 

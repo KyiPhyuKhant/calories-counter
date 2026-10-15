@@ -5,6 +5,19 @@ import type { SqlExecutor } from './database.ts';
 export type NutritionSnapshot = Pick<DiaryEntry, 'name' | 'source' | 'provider' | 'external_id' |
   'serving_amount' | 'serving_unit' | 'protein' | 'carbohydrates' | 'fat' | 'notes'> & { calories: number | null };
 
+export async function updateNutritionSnapshot(
+  tx: SqlExecutor, table: 'diary_entries' | 'planned_meals', snapshot: NutritionSnapshot & { id: string },
+  input: DiaryInput, time: string,
+) {
+  const nutrition = calculateDiaryNutrition(snapshot, input);
+  const isMass = ['g', 'kg', 'oz'].includes(snapshot.serving_unit);
+  await tx.runAsync(`UPDATE ${table} SET entry_date = ?, meal = ?, quantity = ?, quantity_mode = ?,
+    total_calories = ?, total_protein = ?, total_carbohydrates = ?, total_fat = ?, amount_g = ?, updated_at = ? WHERE id = ?`,
+  input.date, input.meal, input.quantity, input.quantity_mode, nutrition.calories,
+  nutrition.protein, nutrition.carbohydrates, nutrition.fat,
+  isMass ? convertServingAmount(nutrition.amount, snapshot.serving_unit, 'g') : null, time, snapshot.id);
+}
+
 export async function writeNutritionSnapshot(
   tx: SqlExecutor, table: 'diary_entries' | 'planned_meals', snapshot: NutritionSnapshot,
   foodId: string | null, profileId: string, input: DiaryInput, id: string, time: string, at = time,

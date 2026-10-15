@@ -114,6 +114,53 @@ test('foreign keys and constraints reject invalid records; repositories validate
   await assert.rejects(db.runAsync('DELETE FROM user_profiles WHERE id = ?', profile), /FOREIGN KEY/);
 });
 
+test('diary, plans and weights reuse one local profile without changing its saved fields', async (t) => {
+  const { db, repositories: r } = await fixture(t);
+  const foodId = await r.foods.create(food);
+  await r.plans.addEntry(foodId, { date: '2026-10-13', meal: 'lunch', quantity: 1, quantity_mode: 'servings' });
+  const profile = await r.profiles.get();
+  await r.diary.addEntry(foodId, { date: '2026-10-13', meal: 'lunch', quantity: 1, quantity_mode: 'servings' });
+  await r.weights.create('2026-10-13', 70);
+  await r.diary.add(profile.id, foodId, 100, at);
+  await r.plans.add(profile.id, foodId, 100, at);
+  await r.weights.add(profile.id, 71, at);
+  assert.deepEqual(await r.profiles.get(), profile);
+  assert.equal((await db.getFirstAsync('SELECT count(*) AS n FROM user_profiles')).n, 1);
+  for (const table of ['diary_entries', 'planned_meals', 'weight_history']) {
+    const rows = await db.getAllAsync(`SELECT profile_id FROM ${table}`);
+    assert.equal(rows.length, 2); assert.ok(rows.every((row) => row.profile_id === profile.id));
+  }
+  await assert.rejects(r.plans.add('missing', foodId, 100, at), /Profile not found/);
+  assert.equal((await r.plans.listDay('2026-10-13')).length, 2);
+});
+
+test('shared snapshot edits keep historical nutrition and roll back failed writes in both repositories', async (t) => {
+  const { db, repositories: r } = await fixture(t);
+  for (const serving_unit of ['g', 'serving']) {
+    const foodId = await r.foods.createCustom({ name: `Snapshot fixture ${serving_unit}`, serving_amount: 1, serving_unit,
+      calories: 100, protein: null, carbohydrates: 0, fat: 2 });
+    for (const [table, entries] of [['diary_entries', r.diary], ['planned_meals', r.plans]]) {
+      const initial = { date: '2026-10-13', meal: 'lunch', quantity: 1, quantity_mode: 'servings' };
+      const id = await entries.addEntry(foodId, initial);
+      const before = await entries.get(id);
+      await entries.update(id, { ...initial, date: '2026-10-14', meal: 'dinner', quantity: 2 });
+      const edited = await entries.get(id);
+      for (const field of ['name', 'calories', 'protein', 'carbohydrates', 'fat', 'serving_amount', 'serving_unit', 'food_id', 'created_at']) {
+        assert.deepEqual(edited[field], before[field]);
+      }
+      assert.equal(edited.total_calories, 200); assert.equal(edited.total_protein, null);
+      assert.equal(edited.total_carbohydrates, 0); assert.equal(edited.total_fat, 4);
+      assert.equal(edited.amount_g, serving_unit === 'g' ? 2 : null);
+      assert.equal(edited.entry_date, '2026-10-14'); assert.equal(edited.meal, 'dinner');
+      await db.execAsync(`CREATE TRIGGER reject_snapshot_edit BEFORE UPDATE ON ${table}
+        BEGIN SELECT RAISE(ABORT, 'Snapshot update failed'); END;`);
+      await assert.rejects(entries.update(id, { ...initial, quantity: 3 }), /Snapshot update failed/);
+      assert.deepEqual(await entries.get(id), edited);
+      await db.execAsync('DROP TRIGGER reject_snapshot_edit');
+    }
+  }
+});
+
 test('weight history is ordered and removable', async (t) => {
   const { repositories: r } = await fixture(t);
   const profile = await r.profiles.save({ name: 'User' });

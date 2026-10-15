@@ -1,10 +1,10 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { CalendarClock, Check, ChevronLeft, ChevronRight, Copy, Plus, Trash2 } from 'lucide-react-native';
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { caloriesLabel, DiaryDateField, DiaryIconButton, diaryStyles, mealLabel } from '@/components/diaryUi';
-import { foodStyles as styles } from '@/components/foodUi';
+import { FoodSheet, foodStyles as styles } from '@/components/foodUi';
 import { useRepositories } from '@/data/DatabaseProvider';
 import type { PlannedFood } from '@/data/planRepository';
 import { calorieProgress, summarizeDashboard } from '@/domain/dashboard';
@@ -148,9 +148,8 @@ export function PlanScreen() {
           })}
         </>}
     </ScrollView>
-    <Modal visible={action !== null} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { if (!busy) setAction(null); }}>
-      <SafeAreaView style={styles.screen}><ScrollView contentContainerStyle={styles.content}>
-        <Text accessibilityRole="header" style={styles.title}>{action === 'copy' ? 'တစ်နေ့စာအစီအစဉ် ကူးရန်' : action ? `${mealLabel(action)}ကို စားပြီးအဖြစ် မှတ်ရန်` : 'စားသောက်အစီအစဉ်'}</Text>
+    <FoodSheet visible={action !== null} onClose={() => { if (!busy) setAction(null); }}
+      title={action === 'copy' ? 'တစ်နေ့စာအစီအစဉ် ကူးရန်' : action ? `${mealLabel(action)}ကို စားပြီးအဖြစ် မှတ်ရန်` : 'စားသောက်အစီအစဉ်'}>
         {action === 'copy' ? <>
           <Text style={styles.label}>ကူးယူမည့် မူလရက်</Text><DiaryDateField value={source} onChange={setSource} disabled={busy} />
           <Text style={styles.label}>ကူးထည့်မည့်ရက်</Text><DiaryDateField value={destination} onChange={setDestination} disabled={busy} />
@@ -158,12 +157,11 @@ export function PlanScreen() {
         <Pressable accessibilityRole="button" disabled={busy} style={[styles.button, busy && styles.disabled]} onPress={confirmAction}><Text style={styles.buttonText}>{busy ? foodText.saving : action === 'copy' ? 'အစီအစဉ်ကူးရန်' : 'စားသုံးမှု မှတ်တမ်းတင်ရန်'}</Text></Pressable>
         <Pressable accessibilityRole="button" disabled={busy} style={styles.option} onPress={() => setAction(null)}><Text style={styles.body}>{foodText.cancel}</Text></Pressable>
         {actionError ? <Text accessibilityRole="alert" style={styles.error}>{actionError}</Text> : null}
-      </ScrollView></SafeAreaView>
-    </Modal>
+    </FoodSheet>
   </SafeAreaView>;
 }
 
-const planningColor = '#2563A0';
+const planningColor = theme.colors.planning;
 const ui = StyleSheet.create({
   heading: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
   toolbarButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 8 },

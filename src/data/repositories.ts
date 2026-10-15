@@ -9,13 +9,6 @@ import { createWeightRepository } from './weightRepository.ts';
 import { createHistoryRepository } from './historyRepository.ts';
 import { recordCurrentTarget } from './targetHistory.ts';
 
-export interface Nutrition {
-  name: string;
-  calories_per_100g: number;
-  protein_per_100g: number | null;
-  carbs_per_100g: number | null;
-  fat_per_100g: number | null;
-}
 export interface Profile {
   id: string;
   name: string;
@@ -29,13 +22,6 @@ export interface Profile {
   manual_calorie_target: number | null;
   created_at: string;
   updated_at: string;
-}
-export interface FoodSnapshot extends Nutrition {
-  id: string;
-  profile_id: string;
-  food_id: string | null;
-  amount_g: number;
-  created_at: string;
 }
 
 function positive(value: number) {

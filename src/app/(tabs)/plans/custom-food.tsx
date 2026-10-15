@@ -1,2 +1,2 @@
-import { CustomFoodForEntryScreen } from '@/screens/CustomFoodForEntryScreen';
-export default function CustomPlannedFoodRoute() { return <CustomFoodForEntryScreen planning />; }
+import { FoodEntryScreen } from '@/screens/FoodEntryScreen';
+export default function CustomPlannedFoodRoute() { return <FoodEntryScreen planning custom />; }

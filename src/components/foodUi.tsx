@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type PropsWithChildren } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronDown } from 'lucide-react-native';
@@ -26,6 +26,17 @@ export function FoodField({ label, value, onChange, error, numeric = false, mult
       maxLength={multiline ? 2000 : numeric ? 12 : 120} />;
 }
 
+export function FoodSheet({ visible, title, onClose, children }: PropsWithChildren<{
+  visible: boolean; title: string; onClose: () => void;
+}>) {
+  return <Modal visible={visible} presentationStyle="pageSheet" animationType="slide" onRequestClose={onClose}>
+    <SafeAreaView style={foodStyles.screen}><ScrollView contentContainerStyle={foodStyles.content}>
+      <Text accessibilityRole="header" style={foodStyles.title}>{title}</Text>
+      {children}
+    </ScrollView></SafeAreaView>
+  </Modal>;
+}
+
 export function ServingUnitPicker({ value, onChange, disabled }: { value: ServingUnit; onChange: (unit: ServingUnit) => void; disabled: boolean }) {
   const [open, setOpen] = useState(false);
   return <View style={foodStyles.field}>
@@ -34,17 +45,12 @@ export function ServingUnitPicker({ value, onChange, disabled }: { value: Servin
       style={[foodStyles.input, { flexDirection: 'row', alignItems: 'center', gap: 8 }]} onPress={() => setOpen(true)}>
       <Text style={[foodStyles.body, { flex: 1 }]}>{unitLabels[value]}</Text><ChevronDown size={20} color={theme.colors.accent} />
     </Pressable>
-    <Modal visible={open} presentationStyle="pageSheet" animationType="slide" onRequestClose={() => setOpen(false)}>
-      <SafeAreaView style={foodStyles.screen}>
-        <ScrollView contentContainerStyle={foodStyles.content}>
-          <Text accessibilityRole="header" style={foodStyles.title}>{foodText.unit}</Text>
-          {foodFormUnits.map((unit) => <Pressable key={unit} accessibilityRole="radio" accessibilityState={{ checked: value === unit }}
-            style={[foodStyles.option, value === unit ? foodStyles.selected : undefined]}
-            onPress={() => { onChange(unit); setOpen(false); }}><Text style={foodStyles.body}>{unitLabels[unit]}</Text></Pressable>)}
-          <Pressable accessibilityRole="button" style={foodStyles.button} onPress={() => setOpen(false)}><Text style={foodStyles.buttonText}>{foodText.cancel}</Text></Pressable>
-        </ScrollView>
-      </SafeAreaView>
-    </Modal>
+    <FoodSheet visible={open} title={foodText.unit} onClose={() => setOpen(false)}>
+      {foodFormUnits.map((unit) => <Pressable key={unit} accessibilityRole="radio" accessibilityState={{ checked: value === unit }}
+        style={[foodStyles.option, value === unit ? foodStyles.selected : undefined]}
+        onPress={() => { onChange(unit); setOpen(false); }}><Text style={foodStyles.body}>{unitLabels[unit]}</Text></Pressable>)}
+      <Pressable accessibilityRole="button" style={foodStyles.button} onPress={() => setOpen(false)}><Text style={foodStyles.buttonText}>{foodText.cancel}</Text></Pressable>
+    </FoodSheet>
   </View>;
 }
 
@@ -58,8 +64,6 @@ export const foodStyles = StyleSheet.create({
   error: { ...theme.typography.caption, lineHeight: undefined, color: theme.colors.danger },
   field: { gap: 8 },
   input: { minHeight: 50, padding: 12, backgroundColor: theme.colors.surface, borderRadius: theme.radius.control, borderWidth: 1, borderColor: theme.colors.border, ...theme.typography.body, lineHeight: undefined, color: theme.colors.text },
-  notes: { minHeight: 100, textAlignVertical: 'top' },
-  invalid: { borderColor: theme.colors.danger },
   button: { minHeight: 50, padding: 14, backgroundColor: theme.colors.accent, borderRadius: theme.radius.control, alignItems: 'center', justifyContent: 'center' },
   buttonText: { ...theme.typography.button, lineHeight: undefined, color: theme.colors.surface },
   destructive: { backgroundColor: theme.colors.danger },

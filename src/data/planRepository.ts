@@ -1,8 +1,9 @@
 import type { Database, SqlExecutor } from './database.ts';
-import { writeNutritionSnapshot } from './snapshotWriter.ts';
-import { calculateDiaryNutrition, localCalendarDate, validateCalendarDate, validateDiaryInput, type DiaryEntry, type DiaryInput, type Meal } from '../domain/diary.ts';
+import { updateNutritionSnapshot, writeNutritionSnapshot } from './snapshotWriter.ts';
+import { localCalendarDate, validateCalendarDate, validateDiaryInput, type DiaryEntry, type DiaryInput, type Meal } from '../domain/diary.ts';
 import { convertServingAmount, type Food } from '../domain/food.ts';
 import { decodeFood } from './foodMetadata.ts';
+import { profileForLogging } from './localProfile.ts';
 
 export interface PlannedFood extends Omit<DiaryEntry, 'consumed_at'> {
   planned_at: string;
@@ -19,16 +20,7 @@ export function createPlanRepository(db: Database, newId: () => string, now: () 
   async function addInTransaction(tx: SqlExecutor, foodId: string, input: DiaryInput, requestedProfile?: string, at = now()) {
     const food = await tx.getFirstAsync<Food>('SELECT * FROM foods WHERE id = ?', foodId);
     if (!food) throw new Error('Food not found.');
-    let profileId = requestedProfile;
-    if (profileId) {
-      if (!await tx.getFirstAsync('SELECT id FROM user_profiles WHERE id = ?', profileId)) throw new Error('Profile not found.');
-    } else {
-      const time = now();
-      await tx.runAsync('INSERT OR IGNORE INTO user_profiles (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)', newId(), 'Local user', time, time);
-      const profile = await tx.getFirstAsync<{ id: string }>('SELECT id FROM user_profiles WHERE singleton = 1');
-      if (!profile) throw new Error('Local profile could not be opened.');
-      profileId = profile.id;
-    }
+    const profileId = await profileForLogging(tx, newId, now, requestedProfile);
     return writeNutritionSnapshot(tx, 'planned_meals', decodeFood(food), food.id, profileId, input, newId(), now(), at);
   }
 
@@ -63,12 +55,7 @@ export function createPlanRepository(db: Database, newId: () => string, now: () 
         const plan = await get(tx, id);
         if (!plan) throw new Error('Planned food not found.');
         if (plan.eaten_at) throw new Error('Eaten plans are read-only. Edit the consumed entry in the diary instead.');
-        const nutrition = calculateDiaryNutrition(plan, input);
-        const isMass = ['g', 'kg', 'oz'].includes(plan.serving_unit);
-        await tx.runAsync(`UPDATE planned_meals SET entry_date = ?, meal = ?, quantity = ?, quantity_mode = ?,
-          total_calories = ?, total_protein = ?, total_carbohydrates = ?, total_fat = ?, amount_g = ?, updated_at = ? WHERE id = ?`,
-        input.date, input.meal, input.quantity, input.quantity_mode, nutrition.calories, nutrition.protein,
-        nutrition.carbohydrates, nutrition.fat, isMass ? convertServingAmount(nutrition.amount, plan.serving_unit, 'g') : null, now(), id);
+        await updateNutritionSnapshot(tx, 'planned_meals', plan, input, now());
       });
     },
     async remove(id: string) {

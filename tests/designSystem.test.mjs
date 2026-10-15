@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { theme } from '../src/theme/theme.ts';
 import { progressRingMetrics } from '../src/components/ui/progressRing.ts';
-import { renderUI, flattenStyle } from './helpers/renderUI.mjs';
+import { renderModule, renderUI, flattenStyle } from './helpers/renderUI.mjs';
 
 function contrast(first, second) {
   function luminance(hex) {
@@ -13,6 +13,21 @@ function contrast(first, second) {
   const values = [luminance(first), luminance(second)].sort((a, b) => b - a);
   return (values[0] + 0.05) / (values[1] + 0.05);
 }
+
+test('shared food sheets retain their native presentation, safe areas, heading, content and dismissal', () => {
+  let closed = 0;
+  const props = { visible: true, title: 'ယူနစ်', onClose: () => closed++, children: 'sheet content' };
+  const { nodes, markup } = renderModule('src/components/foodUi.tsx', 'FoodSheet', props);
+  const modal = nodes.find(({ type }) => type === 'Modal').props;
+  assert.equal(modal.presentationStyle, 'pageSheet'); assert.equal(modal.animationType, 'slide');
+  modal.onRequestClose(); assert.equal(closed, 1);
+  assert.ok(nodes.some(({ type }) => type === 'SafeAreaView'));
+  assert.ok(nodes.some(({ type }) => type === 'ScrollView'));
+  assert.ok(nodes.some(({ type, props }) => type === 'Text' && props.accessibilityRole === 'header' && props.children === 'ယူနစ်'));
+  assert.match(markup, /sheet content/);
+  const hidden = renderModule('src/components/foodUi.tsx', 'FoodSheet', { ...props, visible: false });
+  assert.doesNotMatch(hidden.markup, /sheet content|ယူနစ်/);
+});
 
 test('reference tokens and text/button color pairs preserve accessible contrast', () => {
   assert.equal(theme.colors.background, '#FFFFFF'); assert.equal(theme.colors.primary, '#2F9E68');

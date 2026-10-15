@@ -1,29 +1,16 @@
 import {
-  calculateDiaryNutrition, localCalendarDate, validateCalendarDate, validateDiaryInput,
+  localCalendarDate, validateCalendarDate, validateDiaryInput,
   type DiaryEntry, type DiaryInput,
 } from '../domain/diary.ts';
 import { convertServingAmount, type Food } from '../domain/food.ts';
 import type { Database, SqlExecutor } from './database.ts';
-import { writeNutritionSnapshot } from './snapshotWriter.ts';
+import { updateNutritionSnapshot, writeNutritionSnapshot } from './snapshotWriter.ts';
 import { decodeFood } from './foodMetadata.ts';
+import { profileForLogging } from './localProfile.ts';
 
 export function createDiaryRepository(db: Database, newId: () => string, now: () => string) {
-  async function profileForLogging(tx: SqlExecutor, requested?: string) {
-    if (requested) {
-      const profile = await tx.getFirstAsync<{ id: string }>('SELECT id FROM user_profiles WHERE id = ?', requested);
-      if (!profile) throw new Error('Profile not found.');
-      return profile.id;
-    }
-    const id = newId();
-    const time = now();
-    await tx.runAsync('INSERT OR IGNORE INTO user_profiles (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)', id, 'Local user', time, time);
-    const profile = await tx.getFirstAsync<{ id: string }>('SELECT id FROM user_profiles WHERE singleton = 1');
-    if (!profile) throw new Error('Local profile could not be opened.');
-    return profile.id;
-  }
-
   async function insert(tx: SqlExecutor, food: Food, input: DiaryInput, requestedProfile?: string, consumedAt = now()) {
-    const profile = await profileForLogging(tx, requestedProfile);
+    const profile = await profileForLogging(tx, newId, now, requestedProfile);
     return writeNutritionSnapshot(tx, 'diary_entries', decodeFood(food), food.id, profile, input, newId(), now(), consumedAt);
   }
 
@@ -52,13 +39,7 @@ export function createDiaryRepository(db: Database, newId: () => string, now: ()
       await db.withExclusiveTransactionAsync(async (tx) => {
         const entry = await tx.getFirstAsync<DiaryEntry>('SELECT * FROM diary_entries WHERE id = ?', id);
         if (!entry) throw new Error('Diary entry not found.');
-        const nutrition = calculateDiaryNutrition(entry, input);
-        const isMass = ['g', 'kg', 'oz'].includes(entry.serving_unit);
-        await tx.runAsync(`UPDATE diary_entries SET entry_date = ?, meal = ?, quantity = ?, quantity_mode = ?,
-          total_calories = ?, total_protein = ?, total_carbohydrates = ?, total_fat = ?, amount_g = ?, updated_at = ? WHERE id = ?`,
-        input.date, input.meal, input.quantity, input.quantity_mode, nutrition.calories,
-        nutrition.protein, nutrition.carbohydrates, nutrition.fat,
-        isMass ? convertServingAmount(nutrition.amount, entry.serving_unit, 'g') : null, now(), id);
+        await updateNutritionSnapshot(tx, 'diary_entries', entry, input, now());
       });
     },
     async remove(id: string) {
