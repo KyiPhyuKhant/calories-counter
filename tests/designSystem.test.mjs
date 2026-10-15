@@ -46,7 +46,7 @@ test('inputs retain the keyboard accessory, native input props and announced err
   assert.equal(input.accessibilityLabel, 'Weight (kg)'); assert.equal(input.accessibilityHint, 'Check weight');
   assert.equal(input.accessibilityState.disabled, true); assert.ok(input.inputAccessoryViewID);
   assert.ok(result.nodes.some((node) => node.props.accessibilityRole === 'alert'));
-  assert.ok(result.nodes.some((node) => node.props.accessibilityLabel === 'Dismiss keyboard'));
+  assert.ok(result.nodes.some((node) => node.props.accessibilityLabel === 'ကီးဘုတ်ပိတ်ရန်'));
 });
 
 test('headers keep a readable heading and cards share radius and shadow tokens', () => {
@@ -77,8 +77,8 @@ test('food rows retain serving and unverified source labels and select/view sema
     let pressed = false;
     const result = renderUI('FoodListItem', { food, selecting, onPress: () => { pressed = true; } });
     const row = result.nodes.find((node) => node.type === 'Pressable').props;
-    assert.ok(row.accessibilityLabel.startsWith(selecting ? 'Select' : 'View'));
-    assert.ok(row.accessibilityLabel.includes('unverified')); assert.ok(result.markup.includes('80 kcal / 1 piece'));
+    assert.equal(row.accessibilityHint, selecting ? 'ဤအစားအစာကို ရွေးရန်' : 'အစားအစာအချက်အလက် ကြည့်ရန်');
+    assert.ok(row.accessibilityLabel.includes('အတည်မပြုထားသော')); assert.ok(result.markup.includes('80 kcal / 1 ခု'));
     row.onPress(); assert.equal(pressed, true);
   }
 });
@@ -86,9 +86,9 @@ test('food rows retain serving and unverified source labels and select/view sema
 test('date navigation reuses local calendar arithmetic and disables range boundaries', () => {
   let selected;
   const result = renderUI('DateNavigator', { value: '2024-02-29', onChange: (value) => { selected = value; } });
-  result.nodes.find((node) => node.props.accessibilityLabel === 'Next day').props.onPress();
+  result.nodes.find((node) => node.props.accessibilityLabel === 'နောက်နေ့').props.onPress();
   assert.equal(selected, '2024-03-01');
-  for (const [value, label] of [['1900-01-01', 'Previous day'], ['2100-12-31', 'Next day']]) {
+  for (const [value, label] of [['1900-01-01', 'ယခင်နေ့'], ['2100-12-31', 'နောက်နေ့']]) {
     const boundary = renderUI('DateNavigator', { value, onChange() {} });
     assert.equal(boundary.nodes.find((node) => node.props.accessibilityLabel === label).props.disabled, true);
   }

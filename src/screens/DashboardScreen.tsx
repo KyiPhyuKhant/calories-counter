@@ -38,7 +38,7 @@ export function DashboardScreen() {
         const day = await repositories.dashboard.getDay(date);
         if (active && current === request) { setResult({ date, day }); setError(''); }
       } catch {
-        if (active && current === request) setError('Could not load your daily summary. Please try again.');
+        if (active && current === request) setError('တစ်နေ့တာအကျဉ်းချုပ်ကို ဖတ်ယူ၍မရပါ။ ပြန်လည်ကြိုးစားပါ။');
       }
     }
     // Subscribe before reading so a committed edit cannot be missed during a refresh.
@@ -58,29 +58,29 @@ export function DashboardScreen() {
 
   return <SafeAreaView edges={['top', 'left', 'right']} style={foodStyles.screen}>
     <ScrollView contentContainerStyle={foodStyles.content}>
-      <AppHeader title="Home" subtitle="Calorie Counter" />
+      <AppHeader title="ပင်မ" subtitle="ကယ်လိုရီမှတ်တမ်း" />
       <DateNavigator value={date} onChange={selectDate} />
-      {date !== localCalendarDate() ? <Pressable accessibilityRole="button" onPress={() => selectDate(localCalendarDate())} style={styles.today}><Text style={styles.link}>Today</Text></Pressable> : null}
+      {date !== localCalendarDate() ? <Pressable accessibilityRole="button" onPress={() => selectDate(localCalendarDate())} style={styles.today}><Text style={styles.link}>ယနေ့</Text></Pressable> : null}
       {error ? <View style={foodStyles.field}>
         <Text accessibilityRole="alert" style={foodStyles.error}>{error}</Text>
-        <Pressable accessibilityRole="button" style={foodStyles.button} onPress={() => setRetry((current) => current + 1)}><Text style={foodStyles.buttonText}>Try again</Text></Pressable>
-      </View> : !day ? <ActivityIndicator accessibilityLabel="Loading daily summary" color={theme.colors.accent} /> : <>
+        <Pressable accessibilityRole="button" style={foodStyles.button} onPress={() => setRetry((current) => current + 1)}><Text style={foodStyles.buttonText}>ပြန်လည်ကြိုးစားရန်</Text></Pressable>
+      </View> : !day ? <ActivityIndicator accessibilityLabel="အကျဉ်းချုပ်ဖတ်ယူနေသည်" color={theme.colors.accent} /> : <>
         <AppCard style={styles.summary}>
-          <Text style={foodStyles.label}>{progress ? over ? 'Over target' : progress.state === 'reached' ? 'Target reached' : 'Remaining' : 'Calories consumed'}</Text>
+          <Text style={foodStyles.label}>{progress ? over ? 'ရည်မှန်းချက်ထက် ကျော်လွန်နေသည်' : progress.state === 'reached' ? 'ရည်မှန်းချက်ပြည့်ပါပြီ' : 'ကျန်ရှိသော ကယ်လိုရီ' : 'စားသုံးပြီး ကယ်လိုရီ'}</Text>
           <Text accessibilityLiveRegion="polite" style={[styles.balance, over && styles.warning]}>
-            {progress ? progress.state === 'reached' ? '0 kcal remaining' : balanceLabel(over ? progress.over : progress.remaining) : caloriesLabel(day.totals.total)}
+            {progress ? progress.state === 'reached' ? '0 kcal ကျန်ရှိသည်' : balanceLabel(over ? progress.over : progress.remaining) : caloriesLabel(day.totals.total)}
           </Text>
           {progress ? <>
-            <CalorieProgressRing progress={progress.fraction} value={caloriesLabel(progress.consumed)} caption={`of ${caloriesLabel(progress.target)}`}
-              overTarget={over} accessibilityLabel={`Daily calorie progress${over ? `, ${balanceLabel(progress.over)} over target` : ''}`} />
+            <CalorieProgressRing progress={progress.fraction} value={caloriesLabel(progress.consumed)} caption={`${caloriesLabel(progress.target)} အနက်`}
+              overTarget={over} accessibilityLabel={`တစ်နေ့တာ ကယ်လိုရီတိုးတက်မှု${over ? `၊ ရည်မှန်းချက်ထက် ${balanceLabel(progress.over)} ကျော်လွန်နေသည်` : ''}`} />
             <View style={styles.metrics}>
-              <View style={styles.metric}><Text style={foodStyles.detail}>Consumed</Text><Text style={foodStyles.label}>{caloriesLabel(progress.consumed)}</Text></View>
-              <View style={styles.metric}><Text style={foodStyles.detail}>Daily target</Text><Text style={foodStyles.label}>{caloriesLabel(progress.target)}</Text></View>
+              <View style={styles.metric}><Text style={foodStyles.detail}>စားသုံးပြီး</Text><Text style={foodStyles.label}>{caloriesLabel(progress.consumed)}</Text></View>
+              <View style={styles.metric}><Text style={foodStyles.detail}>နေ့စဉ်ရည်မှန်းချက်</Text><Text style={foodStyles.label}>{caloriesLabel(progress.target)}</Text></View>
             </View>
-            <Text style={foodStyles.detail}>Current profile target; calorie needs are estimates.</Text>
+            <Text style={foodStyles.detail}>လက်ရှိကိုယ်ရေးအချက်အလက်မှ ခန့်မှန်းထားသော ကယ်လိုရီရည်မှန်းချက် ဖြစ်သည်။</Text>
           </> : <>
-            <Text style={foodStyles.body}>No daily target set.</Text>
-            <Pressable accessibilityRole="button" style={foodStyles.button} onPress={() => router.push('/goal-settings')}><Text style={foodStyles.buttonText}>Set calorie target</Text></Pressable>
+            <Text style={foodStyles.body}>နေ့စဉ်ရည်မှန်းချက် မသတ်မှတ်ရသေးပါ။</Text>
+            <Pressable accessibilityRole="button" style={foodStyles.button} onPress={() => router.push('/goal-settings')}><Text style={foodStyles.buttonText}>ကယ်လိုရီရည်မှန်းချက် သတ်မှတ်ရန်</Text></Pressable>
           </>}
         </AppCard>
       </>}
@@ -92,7 +92,7 @@ export function DashboardScreen() {
             style={({ pressed }) => [styles.shortcut, planned ? styles.planningShortcut : styles.diaryShortcut, pressed && styles.pressed]}>
             <Icon size={28} color={planned ? theme.colors.planning : theme.colors.accent} />
             <Text style={styles.destinationLabel}>{destination.label}</Text>
-            <Text style={foodStyles.detail}>{planned ? 'Upcoming' : 'Eaten'}</Text>
+            <Text style={foodStyles.detail}>{planned ? 'ကြိုတင်စီစဉ်ရန်' : 'စားသုံးပြီး'}</Text>
           </Pressable>;
         })}
       </View>
@@ -108,12 +108,12 @@ export function DashboardScreen() {
         })}
       </View>
       {day && !error ? <>
-        <Text accessibilityRole="header" style={foodStyles.label}>Eaten meals</Text>
+        <Text accessibilityRole="header" style={foodStyles.label}>စားသုံးပြီးသော အစားအစာများ</Text>
         {meals.map((meal) => {
           const entries = day.entries.filter((entry) => entry.meal === meal);
           return <View style={styles.mealRow} key={meal}>
             <Text style={[foodStyles.body, diaryStyles.grow]}>{mealLabel(meal)}</Text>
-            <Text style={foodStyles.detail}>{entries.length ? caloriesLabel(day.totals.byMeal[meal]) : 'Not logged'}</Text>
+            <Text style={foodStyles.detail}>{entries.length ? caloriesLabel(day.totals.byMeal[meal]) : 'မှတ်တမ်း မရှိသေးပါ'}</Text>
           </View>;
         })}
       </> : null}

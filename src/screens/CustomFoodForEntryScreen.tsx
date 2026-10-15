@@ -10,6 +10,6 @@ export function CustomFoodForEntryScreen({ planning = false }: { planning?: bool
   const date = typeof params.date === 'string' ? params.date : localCalendarDate();
   const meal = meals.includes(params.meal as Meal) ? params.meal as Meal : 'snacks';
   try { validateCalendarDate(date); }
-  catch { return <View style={foodStyles.status}><Text style={foodStyles.error}>Invalid entry date.</Text></View>; }
+  catch { return <View style={foodStyles.status}><Text style={foodStyles.error}>ရက်စွဲ မမှန်ပါ။</Text></View>; }
   return <FoodEditorScreen onCreated={(foodId) => router.replace({ pathname: planning ? '/plans/edit' : '/diary/edit', params: { foodId, date, meal } })} />;
 }

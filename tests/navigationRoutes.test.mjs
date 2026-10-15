@@ -19,7 +19,7 @@ test('the five main tabs are ordered, labeled, anchored at Home and leave safe-a
   render('src/app/(tabs)/_layout.tsx');
   const tabs = elements.filter(({ type }) => type === 'Tab');
   assert.deepEqual(tabs.map(({ props }) => props.name), ['index', 'diary', 'foods', 'plans', '(profile)']);
-  assert.deepEqual(tabs.map(({ props }) => props.options.title), ['Home', 'Diary', 'Foods', 'Plan', 'Profile']);
+  assert.deepEqual(tabs.map(({ props }) => props.options.title), ['ပင်မ', 'မှတ်တမ်း', 'အစားအစာ', 'အစီအစဉ်', 'ကိုယ်ရေး']);
   assert.ok(tabs.every(({ props }) => props.options.tabBarAccessibilityLabel));
   const options = elements.find(({ type }) => type === 'Tabs').props;
   assert.equal(options.initialRouteName, 'index');
@@ -71,7 +71,7 @@ test('root navigation waits for SQLite profile and exclusively exposes onboardin
   assert.equal(elements.length, 0); assert.ok(loading.nodes.some(({ type }) => type === 'ActivityIndicator'));
   state = { ...state, status: 'error' };
   const error = render('src/app/_layout.tsx', 'ProfileNavigator', {}, mocks);
-  assert.equal(elements.length, 0); assert.match(error.markup, /Your data has not been changed/);
+  assert.equal(elements.length, 0); assert.match(error.markup, /သိမ်းထားသော အချက်အလက်များကို မပြောင်းထားပါ/);
 });
 
 const profile = { sex: 'male', age: 30, height_cm: 180, current_weight_kg: 80, target_weight_kg: 75, activity_level: 'moderate', goal: 'lose', manual_calorie_target: null };

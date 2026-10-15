@@ -4,13 +4,14 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { caloriesLabel, DiaryDateField, DiaryMealField, diaryStyles } from '@/components/diaryUi';
-import { FoodField, foodStyles as styles } from '@/components/foodUi';
+import { FoodField, foodStyles as styles, isDevelopmentFood } from '@/components/foodUi';
 import { useRepositories } from '@/data/DatabaseProvider';
 import { calculateDiaryNutrition, localCalendarDate, meals, validateCalendarDate, type DiaryEntry, type DiaryInput, type Meal, type QuantityMode } from '@/domain/diary';
 import type { Food } from '@/domain/food';
 import type { PlannedFood } from '@/data/planRepository';
 import { theme } from '@/theme/theme';
 import { parseFormNumber } from '@/domain/formNumber';
+import { displayFoodName, foodAmount, foodErrorMessage, foodText } from '@/i18n/foodMy';
 
 function scalar(value?: string | string[]) { return Array.isArray(value) ? value[0] : value; }
 
@@ -45,7 +46,7 @@ export function DiaryEditorScreen({ planning = false }: { planning?: boolean }) 
       if ('entry_date' in result) { setDate(result.entry_date); setMeal(result.meal); setQuantity(result.quantity.toString()); setMode(result.quantity_mode); }
       setLoading(false);
     }
-    load().catch((failure) => { if (active) { setLoadError(failure instanceof Error ? failure.message : 'Could not load this entry.'); setLoading(false); } });
+    load().catch((failure) => { if (active) { setLoadError(foodErrorMessage(failure, 'မှတ်တမ်းကို ဖတ်ယူ၍မရပါ။ ပြန်လည်ကြိုးစားပါ။')); setLoading(false); } });
     return () => { active = false; };
   }, [entries, foods, id, foodId, params.date, attempt]);
 
@@ -54,30 +55,30 @@ export function DiaryEditorScreen({ planning = false }: { planning?: boolean }) 
   let validation = '';
   if (snapshot) {
     try { preview = calculateDiaryNutrition(snapshot, input); }
-    catch (failure) { validation = failure instanceof Error ? failure.message : 'Check your quantity.'; }
+    catch (failure) { validation = foodErrorMessage(failure, 'စားသုံးပမာဏကို ပြန်စစ်ပါ။'); }
   }
   async function save() {
     if (savingRef.current) return;
-    if (!preview || !snapshot) { setError(validation || 'Select a food first.'); return; }
+    if (!preview || !snapshot) { setError(validation || 'အစားအစာအရင်ရွေးပါ။'); return; }
     savingRef.current = true; setSaving(true); setError('');
     try {
       if (id) await entries.update(id, input);
       else await entries.addEntry(snapshot.id, input);
       router.dismissTo({ pathname: planning ? '/plans' : '/diary', params: { date } });
-    } catch { setError('Could not save this entry. Your edits are still here; please try again.'); }
+    } catch { setError('မှတ်တမ်းကို သိမ်းဆည်း၍မရပါ။ ပြင်ဆင်ထားသည့်အချက်များ မပျောက်ပါ။ ပြန်လည်ကြိုးစားပါ။'); }
     finally { savingRef.current = false; setSaving(false); }
   }
-  if (loading) return <View style={styles.status}><ActivityIndicator accessibilityLabel="Loading entry" color={theme.colors.accent} /></View>;
+  if (loading) return <View style={styles.status}><ActivityIndicator accessibilityLabel={foodText.loading} color={theme.colors.accent} /></View>;
   if (loadError || !snapshot) return <View style={styles.status}><Text accessibilityRole="alert" style={styles.error}>{loadError}</Text>
-    <Pressable accessibilityRole="button" style={styles.button} onPress={() => { setLoadError(''); setLoading(true); setAttempt((value) => value + 1); }}><Text style={styles.buttonText}>Try again</Text></Pressable></View>;
+    <Pressable accessibilityRole="button" style={styles.button} onPress={() => { setLoadError(''); setLoading(true); setAttempt((value) => value + 1); }}><Text style={styles.buttonText}>{foodText.retry}</Text></Pressable></View>;
 
   return <SafeAreaView edges={['left', 'right']} style={styles.screen}>
       <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={styles.content} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled">
-        <Text accessibilityRole="header" style={styles.title}>{snapshot.name}</Text>
-        <Text style={styles.body}>{snapshot.calories === null ? 'Calories unavailable' : caloriesLabel(snapshot.calories)} per {snapshot.serving_amount} {snapshot.serving_unit}</Text>
-        {snapshot.source === 'bundled' ? <Text style={styles.error}>Invented development values, not verified nutritional data.</Text> : null}
-        {id ? <Text style={styles.detail}>Nutrition saved when this food was {planning ? 'planned' : 'logged'}.</Text> : null}
-        <View style={styles.field}><Text style={styles.label}>Date</Text><DiaryDateField value={date} onChange={setDate} disabled={saving} /></View>
+        <Text accessibilityRole="header" style={styles.title}>{displayFoodName(snapshot)}</Text>
+        <Text style={styles.body}>{foodAmount(snapshot.serving_amount, snapshot.serving_unit)} အတွက် {snapshot.calories === null ? foodText.unavailable : caloriesLabel(snapshot.calories)}</Text>
+        {snapshot.source === 'bundled' && (!('nutrition_status' in snapshot) || isDevelopmentFood(snapshot)) ? <Text style={styles.error}>{foodText.demoWarning}</Text> : null}
+        {id ? <Text style={styles.detail}>စတင်မှတ်တမ်းတင်စဉ်က အာဟာရအချက်အလက်ကို သိမ်းထားပါသည်။</Text> : null}
+        <View style={styles.field}><Text style={styles.label}>ရက်စွဲ</Text><DiaryDateField value={date} onChange={setDate} disabled={saving} /></View>
         <DiaryMealField value={meal} onChange={setMeal} disabled={saving} />
         <View style={diaryStyles.controls}>
           {(['servings', 'amount'] as const).map((choice) => <Pressable key={choice} accessibilityRole="radio" accessibilityState={{ checked: mode === choice, disabled: saving }}
@@ -87,16 +88,16 @@ export function DiaryEditorScreen({ planning = false }: { planning?: boolean }) 
               setQuantity(preview ? String(choice === 'amount' ? preview.amount : preview.amount / snapshot.serving_amount) : '1');
               setMode(choice); setError('');
             }}>
-            <Text style={styles.body}>{choice === 'servings' ? 'Servings' : `Amount (${snapshot.serving_unit})`}</Text></Pressable>)}
+            <Text style={styles.body}>{choice === 'servings' ? 'အပွဲအရေအတွက်' : foodText.amount}</Text></Pressable>)}
         </View>
-        <FoodField label={mode === 'servings' ? 'Number of servings' : `Quantity (${snapshot.serving_unit})`} value={quantity} numeric disabled={saving}
+        <FoodField label={mode === 'servings' ? 'အပွဲအရေအတွက်' : foodText.amount} value={quantity} numeric disabled={saving}
           onChange={(value) => { setQuantity(value); setError(''); }} error={validation} />
         {preview ? <View style={styles.field}>
           <Text style={styles.nutrition}>{caloriesLabel(preview.calories)}</Text>
-          <Text style={styles.detail}>{Number(preview.amount.toFixed(3))} {snapshot.serving_unit}</Text>
+          <Text style={styles.detail}>{foodAmount(preview.amount, snapshot.serving_unit)}</Text>
         </View> : null}
         <Pressable accessibilityRole="button" accessibilityState={{ disabled: saving || !preview }} disabled={saving || !preview} style={[styles.button, saving || !preview ? styles.disabled : undefined]} onPress={save}>
-          <Text style={styles.buttonText}>{saving ? 'Saving...' : id ? 'Save changes' : planning ? 'Add to plan' : 'Log food'}</Text></Pressable>
+          <Text style={styles.buttonText}>{saving ? foodText.saving : id ? foodText.save : planning ? 'အစီအစဉ်တွင် ထည့်ရန်' : 'စားသုံးမှု မှတ်တမ်းတင်ရန်'}</Text></Pressable>
         {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       </ScrollView>
   </SafeAreaView>;

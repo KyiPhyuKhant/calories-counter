@@ -55,14 +55,14 @@ export function DatabaseProvider({ children }: PropsWithChildren) {
         {failed ? (
           <>
             <Text accessibilityRole="alert" style={styles.message}>
-              Your local data could not be opened. Please try again.
+              စက်ထဲရှိ အချက်အလက်များကို ဖတ်ယူ၍မရပါ။ ပြန်လည်ကြိုးစားပါ။
             </Text>
-            <Button title="Try again" color={theme.colors.accent} onPress={() => {
+            <Button title="ပြန်လည်ကြိုးစားရန်" color={theme.colors.accent} onPress={() => {
               setFailed(false);
               setAttempt((value) => value + 1);
             }} />
           </>
-        ) : <ActivityIndicator accessibilityLabel="Opening local data" color={theme.colors.accent} />}
+        ) : <ActivityIndicator accessibilityLabel="စက်ထဲရှိ အချက်အလက်များကို ဖတ်ယူနေသည်" color={theme.colors.accent} />}
       </View>
     );
   }

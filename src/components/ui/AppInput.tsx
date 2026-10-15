@@ -22,13 +22,13 @@ export function AppInput({ label, hideLabel = false, error, hint, icon: Icon, un
 
 const styles = StyleSheet.create({
   field: { gap: 8 },
-  label: { ...theme.typography.label, color: theme.colors.text },
+  label: { ...theme.typography.label, lineHeight: undefined, color: theme.colors.text },
   control: { minHeight: 50, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.control, backgroundColor: theme.colors.surface },
   search: { backgroundColor: theme.colors.surfaceMuted, borderColor: theme.colors.surfaceMuted },
-  input: { ...theme.typography.body, color: theme.colors.text, flex: 1, padding: 0, minWidth: 0 },
+  input: { ...theme.typography.body, lineHeight: undefined, color: theme.colors.text, flex: 1, padding: 0, minWidth: 0 },
   multiline: { alignItems: 'flex-start' },
   notes: { minHeight: 100, textAlignVertical: 'top' },
   invalid: { borderColor: theme.colors.danger },
-  error: { ...theme.typography.caption, color: theme.colors.danger },
-  hint: { ...theme.typography.caption, color: theme.colors.secondaryText, flexShrink: 1 },
+  error: { ...theme.typography.caption, lineHeight: undefined, color: theme.colors.danger },
+  hint: { ...theme.typography.caption, lineHeight: undefined, color: theme.colors.secondaryText, flexShrink: 1 },
 });

@@ -13,7 +13,7 @@ export function AppButton({ title, icon: Icon, variant = 'primary', loading = fa
   return <Pressable {...props} accessibilityRole={accessibilityRole} accessibilityLabel={props.accessibilityLabel ?? title}
     accessibilityState={{ ...accessibilityState, disabled: blocked, busy: loading }} disabled={blocked}
     style={(state) => [styles.button, styles[variant], state.pressed && styles.pressed, blocked && styles.disabled, typeof style === 'function' ? style(state) : style]}>
-    {Icon || loading ? <View style={styles.icon}>{loading ? <ActivityIndicator accessibilityLabel="Loading" size="small" color={color} /> : Icon ? <Icon size={20} color={color} /> : null}</View> : null}
+    {Icon || loading ? <View style={styles.icon}>{loading ? <ActivityIndicator accessibilityLabel="ဖတ်ယူနေသည်" size="small" color={color} /> : Icon ? <Icon size={20} color={color} /> : null}</View> : null}
     <Text style={[styles.title, { color }]}>{title}</Text>
   </Pressable>;
 }
@@ -24,7 +24,7 @@ const styles = StyleSheet.create({
   secondary: { backgroundColor: theme.colors.accentSurface },
   ghost: { backgroundColor: 'transparent' },
   danger: { backgroundColor: theme.colors.danger },
-  title: { ...theme.typography.button, textAlign: 'center', flexShrink: 1 },
+  title: { ...theme.typography.button, lineHeight: undefined, textAlign: 'center', flexShrink: 1 },
   icon: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: 0.75 },
   disabled: { opacity: 0.5 },

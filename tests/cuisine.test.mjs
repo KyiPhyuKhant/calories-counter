@@ -140,10 +140,10 @@ test('an interrupted cuisine migration rolls back the column, index and version 
 });
 
 test('cuisine picker labels distinguish filtering from uncategorized custom-food editing and expose disabled state', () => {
-  for (const [value, emptyLabel, expected] of [[null, undefined, 'All cuisines'], ['myanmar', undefined, 'Myanmar'], [null, 'Unspecified cuisine', 'Unspecified cuisine']]) {
+  for (const [value, emptyLabel, expected] of [[null, undefined, 'အားလုံး'], ['myanmar', undefined, 'မြန်မာ'], [null, 'အမျိုးအစားမသတ်မှတ်ထား', 'အမျိုးအစားမသတ်မှတ်ထား']]) {
     const { nodes } = renderModule('src/components/CuisinePicker.tsx', 'CuisinePicker', { value, emptyLabel, onChange() {}, disabled: true });
     const button = nodes.find(({ type }) => type === 'Pressable').props;
-    assert.equal(button.accessibilityLabel, `Cuisine: ${expected}`);
+    assert.equal(button.accessibilityLabel, `အစားအစာအမျိုးအစား၊ ${expected}`);
     assert.equal(button.accessibilityState.disabled, true); assert.equal(button.disabled, true);
   }
 });

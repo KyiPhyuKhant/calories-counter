@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ChevronDown } from 'lucide-react-native';
 
-import { servingUnits, type Food, type ServingUnit } from '@/domain/food';
+import { type Food, type ServingUnit } from '@/domain/food';
+import { foodFormUnits, foodText, unitLabels } from '@/i18n/foodMy';
 import { theme } from '@/theme/theme';
 import { AppInput } from '@/components/ui/AppInput';
 
 export function foodSourceLabel(food: Food) {
-  return food.source === 'bundled' ? (isDevelopmentFood(food) ? 'Bundled development sample - unverified' : 'Bundled food catalog - nutrition unverified')
-    : food.source === 'external' ? `External (${food.provider}) - saved locally` : 'Custom food';
+  return food.source === 'bundled' ? (isDevelopmentFood(food) ? 'အတည်မပြုထားသော စမ်းသပ်နမူနာ' : 'ထည့်သွင်းစာရင်း')
+    : food.source === 'external' ? 'ပြင်ပမှ သိမ်းထားသည်' : 'ကိုယ်ပိုင်အစားအစာ';
 }
 
 export function isDevelopmentFood(food: Pick<Food, 'source' | 'nutrition_status'>) {
@@ -27,17 +29,19 @@ export function FoodField({ label, value, onChange, error, numeric = false, mult
 export function ServingUnitPicker({ value, onChange, disabled }: { value: ServingUnit; onChange: (unit: ServingUnit) => void; disabled: boolean }) {
   const [open, setOpen] = useState(false);
   return <View style={foodStyles.field}>
-    <Text style={foodStyles.label}>Serving unit</Text>
-    <Pressable accessibilityRole="button" accessibilityLabel={`Choose serving unit, ${value}`} accessibilityState={{ disabled }} disabled={disabled}
-      style={foodStyles.input} onPress={() => setOpen(true)}><Text style={foodStyles.body}>{value}</Text></Pressable>
+    <Text style={foodStyles.label}>{foodText.unit}</Text>
+    <Pressable accessibilityRole="button" accessibilityLabel={`${foodText.unit}၊ ${unitLabels[value]}`} accessibilityState={{ disabled }} disabled={disabled}
+      style={[foodStyles.input, { flexDirection: 'row', alignItems: 'center', gap: 8 }]} onPress={() => setOpen(true)}>
+      <Text style={[foodStyles.body, { flex: 1 }]}>{unitLabels[value]}</Text><ChevronDown size={20} color={theme.colors.accent} />
+    </Pressable>
     <Modal visible={open} presentationStyle="pageSheet" animationType="slide" onRequestClose={() => setOpen(false)}>
       <SafeAreaView style={foodStyles.screen}>
         <ScrollView contentContainerStyle={foodStyles.content}>
-          <Text accessibilityRole="header" style={foodStyles.title}>Serving unit</Text>
-          {servingUnits.map((unit) => <Pressable key={unit} accessibilityRole="radio" accessibilityState={{ checked: value === unit }}
+          <Text accessibilityRole="header" style={foodStyles.title}>{foodText.unit}</Text>
+          {foodFormUnits.map((unit) => <Pressable key={unit} accessibilityRole="radio" accessibilityState={{ checked: value === unit }}
             style={[foodStyles.option, value === unit ? foodStyles.selected : undefined]}
-            onPress={() => { onChange(unit); setOpen(false); }}><Text style={foodStyles.body}>{unit}</Text></Pressable>)}
-          <Pressable accessibilityRole="button" style={foodStyles.button} onPress={() => setOpen(false)}><Text style={foodStyles.buttonText}>Cancel</Text></Pressable>
+            onPress={() => { onChange(unit); setOpen(false); }}><Text style={foodStyles.body}>{unitLabels[unit]}</Text></Pressable>)}
+          <Pressable accessibilityRole="button" style={foodStyles.button} onPress={() => setOpen(false)}><Text style={foodStyles.buttonText}>{foodText.cancel}</Text></Pressable>
         </ScrollView>
       </SafeAreaView>
     </Modal>
@@ -46,22 +50,22 @@ export function ServingUnitPicker({ value, onChange, disabled }: { value: Servin
 
 export const foodStyles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.background },
-  content: { padding: 24, gap: 20, width: '100%', maxWidth: 560, alignSelf: 'center' },
-  title: { ...theme.typography.title, color: theme.colors.text },
-  body: { ...theme.typography.body, color: theme.colors.text },
-  label: { ...theme.typography.label, color: theme.colors.text },
-  detail: { ...theme.typography.caption, color: theme.colors.secondaryText },
-  error: { ...theme.typography.caption, color: theme.colors.danger },
+  content: { padding: 16, gap: 12, width: '100%', maxWidth: 560, alignSelf: 'center' },
+  title: { ...theme.typography.title, fontSize: 24, lineHeight: undefined, color: theme.colors.text },
+  body: { ...theme.typography.body, lineHeight: undefined, color: theme.colors.text },
+  label: { ...theme.typography.label, lineHeight: undefined, color: theme.colors.text },
+  detail: { ...theme.typography.caption, lineHeight: undefined, color: theme.colors.secondaryText },
+  error: { ...theme.typography.caption, lineHeight: undefined, color: theme.colors.danger },
   field: { gap: 8 },
-  input: { minHeight: 50, padding: 12, backgroundColor: theme.colors.surface, borderRadius: theme.radius.control, borderWidth: 1, borderColor: theme.colors.border, ...theme.typography.body, color: theme.colors.text },
+  input: { minHeight: 50, padding: 12, backgroundColor: theme.colors.surface, borderRadius: theme.radius.control, borderWidth: 1, borderColor: theme.colors.border, ...theme.typography.body, lineHeight: undefined, color: theme.colors.text },
   notes: { minHeight: 100, textAlignVertical: 'top' },
   invalid: { borderColor: theme.colors.danger },
   button: { minHeight: 50, padding: 14, backgroundColor: theme.colors.accent, borderRadius: theme.radius.control, alignItems: 'center', justifyContent: 'center' },
-  buttonText: { ...theme.typography.button, color: theme.colors.surface },
+  buttonText: { ...theme.typography.button, lineHeight: undefined, color: theme.colors.surface },
   destructive: { backgroundColor: theme.colors.danger },
   disabled: { opacity: 0.5 },
   option: { minHeight: 48, padding: 14, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.control },
   selected: { backgroundColor: theme.colors.accentSurface, borderColor: theme.colors.accent },
   status: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, gap: 16 },
-  nutrition: { ...theme.typography.metric, color: theme.colors.accent },
+  nutrition: { ...theme.typography.metric, lineHeight: undefined, color: theme.colors.accent },
 });

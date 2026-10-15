@@ -4,7 +4,7 @@ export type FoodSource = 'bundled' | 'external' | 'custom';
 export const cuisines = ['myanmar', 'japanese', 'western', 'chinese'] as const;
 export type Cuisine = typeof cuisines[number];
 export const cuisineLabels: Record<Cuisine, string> = {
-  myanmar: 'Myanmar', japanese: 'Japanese', western: 'Western', chinese: 'Chinese',
+  myanmar: 'မြန်မာ', japanese: 'ဂျပန်', western: 'အနောက်တိုင်း', chinese: 'တရုတ်',
 };
 
 export function isCuisine(value: unknown): value is Cuisine {

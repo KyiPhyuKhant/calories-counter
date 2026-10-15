@@ -10,7 +10,7 @@ export default function PlannedFoodSelectionRoute() {
   const date = typeof params.date === 'string' ? params.date : localCalendarDate();
   const meal = meals.includes(params.meal as Meal) ? params.meal as Meal : 'snacks';
   try { validateCalendarDate(date); }
-  catch { return <View style={foodStyles.status}><Text style={foodStyles.error}>Invalid planning date.</Text></View>; }
+  catch { return <View style={foodStyles.status}><Text style={foodStyles.error}>ရက်စွဲ မမှန်ပါ။</Text></View>; }
   return <FoodCatalogScreen onAddCustom={() => router.push({ pathname: '/plans/custom-food', params: { date, meal } })}
     onSelect={(food) => router.replace({ pathname: '/plans/edit', params: { foodId: food.id, date, meal } })} />;
 }

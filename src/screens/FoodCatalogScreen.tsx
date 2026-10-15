@@ -12,6 +12,7 @@ import { theme } from '@/theme/theme';
 import { AppButton } from '@/components/ui/AppButton';
 import { AppInput } from '@/components/ui/AppInput';
 import { FoodListItem } from '@/components/ui/FoodListItem';
+import { foodText } from '@/i18n/foodMy';
 
 export function FoodCatalogScreen({ onSelect, onAddCustom }: { onSelect?: (food: Food) => void; onAddCustom?: () => void } = {}) {
   const { foods } = useRepositories();
@@ -35,7 +36,7 @@ export function FoodCatalogScreen({ onSelect, onAddCustom }: { onSelect?: (food:
         setItems(result); setHasMore(result.length === 50); setLoading(false);
       }).catch(() => {
         if (request !== generation.current) return;
-        setItems([]); setHasMore(false); setError('Could not load foods. Please try again.'); setLoading(false);
+        setItems([]); setHasMore(false); setError(foodText.loadError); setLoading(false);
       });
     }, 200);
     return () => { clearTimeout(timer); generation.current++; };
@@ -49,44 +50,43 @@ export function FoodCatalogScreen({ onSelect, onAddCustom }: { onSelect?: (food:
     try {
       const result = await foods.search(query, 50, items.length, cuisine);
       if (request === generation.current) { setItems((previous) => [...previous, ...result]); setHasMore(result.length === 50); }
-    } catch { if (request === generation.current) setError('Could not load the next page. Please try again.'); }
+    } catch { if (request === generation.current) setError('နောက်ထပ်အစားအစာများကို ဖတ်ယူ၍မရပါ။ ပြန်လည်ကြိုးစားပါ။'); }
     finally { if (request === generation.current) setMoreLoading(false); }
   }
 
   return <SafeAreaView edges={['left', 'right']} style={styles.screen}>
     <View style={local.header}>
-      <AppInput label="Search foods by name" hideLabel variant="search" icon={Search} placeholder="Search foods" value={query} maxLength={120}
+      <AppInput label={foodText.search} hideLabel variant="search" icon={Search} placeholder={foodText.search} value={query} maxLength={120}
         onChangeText={(value) => { if (value !== query) { generation.current++; setLoading(true); setQuery(value); } }} autoCorrect={false}
         returnKeyType="search" clearButtonMode="while-editing" />
       <CuisinePicker value={cuisine} onChange={(value) => {
         if (value === cuisine) return;
         generation.current++; setLoading(true); setItems([]); setHasMore(false); setError(''); setCuisine(value);
       }} />
-      <AppButton title="Add custom food" icon={Plus} onPress={onAddCustom ?? (() => router.push('/foods/edit'))} />
-      <Text style={styles.detail}>Unverified catalog foods have no calorie values. Demo foods contain invented values.</Text>
+      <AppButton title={foodText.add} icon={Plus} onPress={onAddCustom ?? (() => router.push('/foods/edit'))} />
     </View>
     <FlatList data={loading ? [] : items} keyExtractor={(food) => food.id} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets
       contentContainerStyle={local.list}
       renderItem={({ item }) => <FoodListItem food={item} selecting={Boolean(onSelect)}
         onPress={() => onSelect && hasKnownCalories(item) ? onSelect(item) : router.push({ pathname: '/foods/[id]', params: { id: item.id } })} />}
-      ListEmptyComponent={loading ? <ActivityIndicator accessibilityLabel="Searching foods" color={theme.colors.accent} />
+      ListEmptyComponent={loading ? <ActivityIndicator accessibilityLabel="အစားအစာရှာနေသည်" color={theme.colors.accent} />
         : !error ? <View style={styles.field}>
-          <Text style={styles.body}>{cuisine === null ? 'No foods found.' : `No matching ${cuisineLabels[cuisine]} foods.`}</Text>
-          {cuisine !== null ? <AppButton title="Clear cuisine filter" variant="secondary" icon={X} onPress={() => {
+          <Text style={styles.body}>{cuisine === null ? foodText.empty : `${cuisineLabels[cuisine]} အစားအစာမတွေ့ပါ။`}</Text>
+          {cuisine !== null ? <AppButton title={foodText.clearFilter} variant="secondary" icon={X} onPress={() => {
             generation.current++; setLoading(true); setCuisine(null);
           }} /> : null}
         </View> : null}
       ListFooterComponent={<View style={local.footer}>
         {error ? <><Text accessibilityRole="alert" style={styles.error}>{error}</Text>
-          <Pressable accessibilityRole="button" style={styles.button} onPress={() => items.length ? loadMore() : setRetry((value) => value + 1)}><Text style={styles.buttonText}>Try again</Text></Pressable></> : null}
+          <Pressable accessibilityRole="button" style={styles.button} onPress={() => items.length ? loadMore() : setRetry((value) => value + 1)}><Text style={styles.buttonText}>{foodText.retry}</Text></Pressable></> : null}
         {hasMore && !loading && !error ? <Pressable accessibilityRole="button" disabled={moreLoading} style={styles.button} onPress={loadMore}>
-          <Text style={styles.buttonText}>{moreLoading ? 'Loading...' : 'Load more'}</Text></Pressable> : null}
+          <Text style={styles.buttonText}>{moreLoading ? foodText.loading : 'ထပ်မံကြည့်ရန်'}</Text></Pressable> : null}
       </View>} />
   </SafeAreaView>;
 }
 
 const local = StyleSheet.create({
-  header: { padding: 24, gap: 16, width: '100%', maxWidth: 560, alignSelf: 'center' },
-  list: { paddingHorizontal: 24, paddingBottom: 24, width: '100%', maxWidth: 560, alignSelf: 'center' },
+  header: { padding: 16, gap: 12, width: '100%', maxWidth: 560, alignSelf: 'center' },
+  list: { paddingHorizontal: 16, paddingBottom: 16, width: '100%', maxWidth: 560, alignSelf: 'center' },
   footer: { paddingVertical: 20, gap: 16 },
 });

@@ -10,8 +10,8 @@ export function FormInput({ error, ...props }: TextInputProps & { error?: string
       inputAccessoryViewID={Platform.OS === 'ios' ? accessoryId : undefined} />
     {Platform.OS === 'ios' ? <InputAccessoryView nativeID={accessoryId} backgroundColor={theme.colors.surface}>
       <View style={styles.toolbar}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Dismiss keyboard" onPress={Keyboard.dismiss} style={styles.done}>
-          <Text style={styles.label}>Done</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel="ကီးဘုတ်ပိတ်ရန်" onPress={Keyboard.dismiss} style={styles.done}>
+          <Text style={styles.label}>ပြီးပါပြီ</Text>
         </Pressable>
       </View>
     </InputAccessoryView> : null}

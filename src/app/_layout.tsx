@@ -12,9 +12,9 @@ import { theme } from '@/theme/theme';
 export function ProfileNavigator() {
   const { status, completed, reload } = useLocalProfile();
   if (status !== 'ready') return <SafeAreaView style={foodStyles.screen}><View style={foodStyles.status}>
-    {status === 'loading' ? <ActivityIndicator accessibilityLabel="Opening your local profile" color={theme.colors.accent} /> : <>
-      <Text accessibilityRole="alert" style={foodStyles.error}>Could not open your local profile. Your data has not been changed.</Text>
-      <AppButton title="Try again" onPress={() => { void reload().catch(() => {}); }} />
+    {status === 'loading' ? <ActivityIndicator accessibilityLabel="ကိုယ်ရေးအချက်အလက်ကို ဖတ်ယူနေသည်" color={theme.colors.accent} /> : <>
+      <Text accessibilityRole="alert" style={foodStyles.error}>ကိုယ်ရေးအချက်အလက်ကို ဖတ်ယူ၍မရပါ။ သိမ်းထားသော အချက်အလက်များကို မပြောင်းထားပါ။</Text>
+      <AppButton title="ပြန်လည်ကြိုးစားရန်" onPress={() => { void reload().catch(() => {}); }} />
     </>}
   </View></SafeAreaView>;
   return <Stack screenOptions={{ headerShown: false }}>

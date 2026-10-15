@@ -1,32 +1,33 @@
 import { useEffect, useRef, useState } from 'react';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Save, Trash2, X } from 'lucide-react-native';
+import { ActivityIndicator, Alert, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { FoodField, ServingUnitPicker, foodStyles as styles } from '@/components/foodUi';
+import { SimpleFoodFields } from '@/components/SimpleFoodFields';
+import { AppButton } from '@/components/ui/AppButton';
+import { foodStyles as styles } from '@/components/foodUi';
 import { useRepositories } from '@/data/DatabaseProvider';
-import { validateFood, type Cuisine, type FoodInput, type ServingUnit } from '@/domain/food';
-import { CuisinePicker } from '@/components/CuisinePicker';
-import { theme } from '@/theme/theme';
-import { parseFormNumber } from '@/domain/formNumber';
+import { validateFood, type Food } from '@/domain/food';
+import { displayFoodName, foodErrorMessage, foodText, foodValidationErrors } from '@/i18n/foodMy';
 import { goBack } from '@/navigation/navigation';
-
-type Form = { name: string; cuisine: Cuisine | null; native_name: string; aliases: string; nutrition_source: string; category: FoodInput['category']; image: string | null; calories: string; serving_amount: string; serving_unit: ServingUnit; protein: string; carbohydrates: string; fat: string; notes: string };
-const initial: Form = { name: '', cuisine: null, native_name: '', aliases: '', nutrition_source: '', category: null, image: null, calories: '', serving_amount: '100', serving_unit: 'g', protein: '', carbohydrates: '', fat: '', notes: '' };
+import { createSimpleFoodForm, simpleFoodInput, type SimpleFoodForm } from '@/screens/simpleFoodForm';
+import { theme } from '@/theme/theme';
 
 export function FoodEditorScreen({ onCreated }: { onCreated?: (id: string) => void } = {}) {
-  const { id: param, copyId: copyParam } = useLocalSearchParams<{ id?: string | string[]; copyId?: string | string[] }>();
-  const id = Array.isArray(param) ? param[0] : param;
-  const copyId = Array.isArray(copyParam) ? copyParam[0] : copyParam;
+  const params = useLocalSearchParams<{ id?: string | string[]; copyId?: string | string[] }>();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  const copyId = Array.isArray(params.copyId) ? params.copyId[0] : params.copyId;
   const loadId = id ?? copyId;
   const { foods } = useRepositories();
   const router = useRouter();
-  const [form, setForm] = useState<Form>(initial);
+  const stackedActions = useWindowDimensions().fontScale > 1.3;
+  const [original, setOriginal] = useState<Food>();
+  const [form, setForm] = useState<SimpleFoodForm>(createSimpleFoodForm);
   const [loading, setLoading] = useState(Boolean(loadId));
   const [loadError, setLoadError] = useState('');
   const [attempt, setAttempt] = useState(0);
-  const [saving, setSaving] = useState(false);
-  const savingRef = useRef(false);
+  const [action, setAction] = useState<'save' | 'delete' | null>(null);
+  const busy = useRef(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
 
@@ -35,31 +36,19 @@ export function FoodEditorScreen({ onCreated }: { onCreated?: (id: string) => vo
     let active = true;
     foods.get(loadId).then((food) => {
       if (!active) return;
-      if (!food || (id && food.source !== 'custom')) { setLoadError('This food is unavailable.'); setLoading(false); return; }
-      setForm({ name: food.name, cuisine: food.cuisine, native_name: food.native_name ?? '', aliases: food.aliases.join(', '), nutrition_source: food.nutrition_source ?? '', category: food.category, image: food.image,
-        calories: food.calories?.toString() ?? '', serving_amount: food.serving_amount.toString(),
-        serving_unit: food.serving_unit, protein: food.protein?.toString() ?? '', carbohydrates: food.carbohydrates?.toString() ?? '',
-        fat: food.fat?.toString() ?? '', notes: food.notes ?? '' });
-      setLoading(false);
-    }).catch(() => { if (active) { setLoadError('Could not load this food.'); setLoading(false); } });
+      if (!food || (id && food.source !== 'custom')) { setLoadError(foodText.loadError); setLoading(false); return; }
+      setOriginal(food); setForm(createSimpleFoodForm(food)); setLoading(false);
+    }).catch(() => { if (active) { setLoadError(foodText.loadError); setLoading(false); } });
     return () => { active = false; };
   }, [foods, id, loadId, attempt]);
 
-  function update<K extends keyof Form>(key: K, value: Form[K]) {
-    setForm((previous) => ({ ...previous, [key]: value })); setError('');
-  }
-  const input: FoodInput = { ...form, native_name: form.native_name || null, aliases: form.aliases.split(/[,;\n]/).map((name) => name.trim()).filter(Boolean),
-    nutrition_source: form.nutrition_source || null, nutrition_status: form.calories.trim() ? 'user_entered' : 'unverified',
-    calories: form.calories.trim() ? parseFormNumber(form.calories) : null, serving_amount: parseFormNumber(form.serving_amount),
-    protein: form.protein.trim() ? parseFormNumber(form.protein) : null,
-    carbohydrates: form.carbohydrates.trim() ? parseFormNumber(form.carbohydrates) : null,
-    fat: form.fat.trim() ? parseFormNumber(form.fat) : null };
-  const errors = validateFood(input);
+  const input = simpleFoodInput(form, original);
+  const errors = foodValidationErrors(validateFood(input));
   async function save() {
-    if (savingRef.current) return;
+    if (busy.current) return;
     setSubmitted(true);
-    if (Object.keys(errors).length) { setError('Check the highlighted fields.'); return; }
-    savingRef.current = true; setSaving(true); setError('');
+    if (Object.keys(errors).length) { setError(foodText.checkFields); return; }
+    busy.current = true; setAction('save'); setError('');
     try {
       if (id) { await foods.updateCustom(id, input); goBack(router); }
       else {
@@ -67,35 +56,35 @@ export function FoodEditorScreen({ onCreated }: { onCreated?: (id: string) => vo
         if (onCreated) onCreated(newId);
         else router.replace({ pathname: '/foods/[id]', params: { id: newId } });
       }
-    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not save this food. Please try again.'); }
-    finally { savingRef.current = false; setSaving(false); }
+    } catch (failure) { setError(foodErrorMessage(failure, foodText.saveError)); }
+    finally { busy.current = false; setAction(null); }
   }
-
-  if (loading) return <View style={styles.status}><ActivityIndicator accessibilityLabel="Loading custom food" color={theme.colors.accent} /></View>;
+  async function remove() {
+    if (!id || busy.current) return;
+    busy.current = true; setAction('delete'); setError('');
+    try { await foods.remove(id); router.dismissTo('/foods'); }
+    catch { setError(foodText.deleteError); }
+    finally { busy.current = false; setAction(null); }
+  }
+  if (loading) return <View style={styles.status}><ActivityIndicator accessibilityLabel={foodText.loading} color={theme.colors.accent} /></View>;
   if (loadError) return <View style={styles.status}><Text accessibilityRole="alert" style={styles.error}>{loadError}</Text>
-    <Pressable accessibilityRole="button" style={styles.button} onPress={() => { setLoading(true); setLoadError(''); setAttempt((value) => value + 1); }}><Text style={styles.buttonText}>Try again</Text></Pressable></View>;
+    <AppButton title={foodText.retry} onPress={() => { setLoading(true); setLoadError(''); setAttempt((value) => value + 1); }} />
+    <AppButton title={foodText.cancel} variant="ghost" onPress={() => goBack(router)} />
+  </View>;
 
   return <SafeAreaView edges={['left', 'right']} style={styles.screen}>
-      <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-        <Text accessibilityRole="header" style={styles.title}>{id ? 'Edit custom food' : 'New custom food'}</Text>
-        <FoodField label="Food name" value={form.name} onChange={(value) => update('name', value)} disabled={saving} error={submitted ? errors.name : undefined} />
-        <FoodField label="Native name (optional)" value={form.native_name} onChange={(value) => update('native_name', value)} disabled={saving} error={submitted ? errors.native_name : undefined} />
-        <FoodField label="Alternative or romanized names (comma separated)" value={form.aliases} multiline onChange={(value) => update('aliases', value)} disabled={saving} error={submitted ? errors.aliases : undefined} />
-        <View style={styles.field}><Text style={styles.label}>Cuisine (optional)</Text>
-          <CuisinePicker value={form.cuisine} onChange={(value) => update('cuisine', value)} emptyLabel="Unspecified cuisine" disabled={saving} />
-        </View>
-        <FoodField label="Calories per declared serving (kcal, optional)" value={form.calories} numeric onChange={(value) => update('calories', value)} disabled={saving} error={submitted ? errors.calories : undefined} />
-        {!form.calories.trim() ? <Text style={styles.detail}>Calories unavailable. This food cannot be logged or planned yet.</Text> : null}
-        <FoodField label="Nutrition source or measured recipe (optional)" value={form.nutrition_source} multiline onChange={(value) => update('nutrition_source', value)} disabled={saving} error={submitted ? errors.nutrition_source : undefined} />
-        <FoodField label="Serving amount" value={form.serving_amount} numeric onChange={(value) => update('serving_amount', value)} disabled={saving} error={submitted ? errors.serving_amount : undefined} />
-        <ServingUnitPicker value={form.serving_unit} onChange={(value) => update('serving_unit', value)} disabled={saving} />
-        {(['protein', 'carbohydrates', 'fat'] as const).map((key) => <FoodField key={key}
-          label={`${key[0].toUpperCase()}${key.slice(1)} per declared serving (g, optional)`} value={form[key]} numeric
-          onChange={(value) => update(key, value)} disabled={saving} error={submitted ? errors[key] : undefined} />)}
-        <FoodField label="Notes (optional)" value={form.notes} multiline onChange={(value) => update('notes', value)} disabled={saving} error={submitted ? errors.notes : undefined} />
-        <Pressable accessibilityRole="button" disabled={saving} style={[styles.button, saving ? styles.disabled : undefined]} onPress={save}>
-          <Text style={styles.buttonText}>{saving ? 'Saving...' : 'Save food'}</Text></Pressable>
-        {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
-      </ScrollView>
+    <Stack.Screen options={{ title: id ? foodText.edit : foodText.add }} />
+    <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+      <SimpleFoodFields form={form} onChange={(changes) => { setForm((previous) => ({ ...previous, ...changes })); setError(''); }} errors={submitted ? errors : {}} disabled={action !== null} />
+      <View style={{ flexDirection: stackedActions ? 'column' : 'row', flexWrap: 'wrap', gap: 8 }}>
+        <AppButton title={foodText.save} icon={Save} loading={action === 'save'} disabled={action !== null} onPress={save} style={{ flex: stackedActions ? undefined : 1, minWidth: 120 }} />
+        <AppButton title={foodText.cancel} icon={X} variant="secondary" disabled={action !== null} onPress={() => goBack(router)} style={{ flex: stackedActions ? undefined : 1, minWidth: 120 }} />
+      </View>
+      {id && original?.source === 'custom' ? <AppButton title={foodText.remove} icon={Trash2} variant="danger" loading={action === 'delete'} disabled={action !== null} onPress={() => Alert.alert(
+        foodText.deleteTitle, `${displayFoodName(original)}\n${foodText.deleteHint}`, [
+          { text: foodText.cancel, style: 'cancel' }, { text: foodText.remove, style: 'destructive', onPress: remove },
+        ])} /> : null}
+      {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
+    </ScrollView>
   </SafeAreaView>;
 }

@@ -17,10 +17,10 @@ export function goBack(router: Navigation) {
 
 export function homeDestinations(date: string) {
   return [
-    { key: 'diary', label: 'Food diary', href: { pathname: '/diary', params: { date } } },
-    { key: 'plans', label: 'Meal plans', href: '/plans' },
-    { key: 'foods', label: 'Food catalog', href: '/foods' },
-    { key: 'history', label: 'Weight and calorie history', href: { pathname: '/history', params: { date } } },
-    { key: 'profile', label: 'Profile and calorie goal', href: '/profile' },
+    { key: 'diary', label: 'စားသုံးမှုမှတ်တမ်း', href: { pathname: '/diary', params: { date } } },
+    { key: 'plans', label: 'စားသောက်အစီအစဉ်', href: '/plans' },
+    { key: 'foods', label: 'အစားအစာစာရင်း', href: '/foods' },
+    { key: 'history', label: 'ကိုယ်အလေးချိန်နှင့် ကယ်လိုရီမှတ်တမ်း', href: { pathname: '/history', params: { date } } },
+    { key: 'profile', label: 'ကိုယ်ရေးအချက်အလက်နှင့် ရည်မှန်းချက်', href: '/profile' },
   ] as const satisfies readonly { key: string; label: string; href: Href }[];
 }
