@@ -156,7 +156,10 @@ test('migration 4 preserves gram snapshots and food links, resolves legacy local
   const r = createRepositories(db, randomUUID);
   const profileId = randomUUID();
   await db.runAsync('INSERT INTO user_profiles (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)', profileId, 'User', '2026-10-13T00:00:00Z', '2026-10-13T00:00:00Z');
-  const foodId = await r.foods.createCustom({ ...food, name: 'Changed catalog', calories: 999 });
+  // Seed the legacy schema directly; current repositories require current migrations.
+  const foodId = randomUUID();
+  await db.runAsync(`INSERT INTO foods (id, name, search_key, calories, serving_amount, serving_unit, source, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, foodId, 'Changed catalog', 'changed catalog', 999, food.serving_amount, food.serving_unit, 'custom', 'old', 'old');
   const at = '2026-10-12T23:30:00.000Z';
   await db.runAsync('INSERT INTO diary_entries VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     'legacy-entry', profileId, foodId, 'Original snapshot', 200, null, 30, 4, 25, at, at);

@@ -130,6 +130,25 @@ Sources:
 
 ## Food catalog
 
+The Foods tab includes an offline cuisine filter: All cuisines, Myanmar,
+Japanese, Western, and Chinese. New and existing custom foods can be assigned an
+optional cuisine in their form. All cuisines includes uncategorized foods;
+choosing a specific cuisine combines that filter with the existing name search
+and pagination, including when selecting foods for the diary or a plan.
+
+Migration 7 only appends a nullable `foods.cuisine` field and an index on cuisine,
+name, and ID. It does not classify, overwrite, delete, or import any existing
+food. Existing foods remain uncategorized until explicitly edited. Nutrition,
+diary snapshots, and plans are unchanged. Omitted cuisine values on repository
+updates preserve the saved category; explicit `null` clears it. Custom duplicate
+rules remain unchanged, so selecting a different cuisine does not bypass them.
+
+This first multicultural-catalog stage adds cuisine filtering only. Aliases,
+native/romanized alternative-name indexing, cuisine dish imports, nutrition
+provenance, image-path storage, and recipe calculations are not implemented yet.
+No cuisine-specific dish data or nutritional values have been added. Existing
+square thumbnail presentation and offline Unicode name search are retained.
+
 Open the dashboard's food catalog button to search locally, view serving nutrition, or add
 a custom food. Only custom foods can be edited or deleted. Catalog searches use
 SQLite FTS5 with Unicode tokens, accent folding, and prefix matching for each

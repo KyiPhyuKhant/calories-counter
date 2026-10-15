@@ -5,13 +5,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FoodField, ServingUnitPicker, foodStyles as styles } from '@/components/foodUi';
 import { useRepositories } from '@/data/DatabaseProvider';
-import { validateFood, type FoodInput, type ServingUnit } from '@/domain/food';
+import { validateFood, type Cuisine, type FoodInput, type ServingUnit } from '@/domain/food';
+import { CuisinePicker } from '@/components/CuisinePicker';
 import { theme } from '@/theme/theme';
 import { parseFormNumber } from '@/domain/formNumber';
 import { goBack } from '@/navigation/navigation';
 
-type Form = { name: string; calories: string; serving_amount: string; serving_unit: ServingUnit; protein: string; carbohydrates: string; fat: string; notes: string };
-const initial: Form = { name: '', calories: '', serving_amount: '100', serving_unit: 'g', protein: '', carbohydrates: '', fat: '', notes: '' };
+type Form = { name: string; cuisine: Cuisine | null; calories: string; serving_amount: string; serving_unit: ServingUnit; protein: string; carbohydrates: string; fat: string; notes: string };
+const initial: Form = { name: '', cuisine: null, calories: '', serving_amount: '100', serving_unit: 'g', protein: '', carbohydrates: '', fat: '', notes: '' };
 
 export function FoodEditorScreen({ onCreated }: { onCreated?: (id: string) => void } = {}) {
   const { id: param } = useLocalSearchParams<{ id?: string | string[] }>();
@@ -33,7 +34,7 @@ export function FoodEditorScreen({ onCreated }: { onCreated?: (id: string) => vo
     foods.get(id).then((food) => {
       if (!active) return;
       if (!food || food.source !== 'custom') { setLoadError('This custom food is unavailable.'); setLoading(false); return; }
-      setForm({ name: food.name, calories: food.calories.toString(), serving_amount: food.serving_amount.toString(),
+      setForm({ name: food.name, cuisine: food.cuisine, calories: food.calories.toString(), serving_amount: food.serving_amount.toString(),
         serving_unit: food.serving_unit, protein: food.protein?.toString() ?? '', carbohydrates: food.carbohydrates?.toString() ?? '',
         fat: food.fat?.toString() ?? '', notes: food.notes ?? '' });
       setLoading(false);
@@ -73,6 +74,9 @@ export function FoodEditorScreen({ onCreated }: { onCreated?: (id: string) => vo
       <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
         <Text accessibilityRole="header" style={styles.title}>{id ? 'Edit custom food' : 'New custom food'}</Text>
         <FoodField label="Food name" value={form.name} onChange={(value) => update('name', value)} disabled={saving} error={submitted ? errors.name : undefined} />
+        <View style={styles.field}><Text style={styles.label}>Cuisine (optional)</Text>
+          <CuisinePicker value={form.cuisine} onChange={(value) => update('cuisine', value)} emptyLabel="Unspecified cuisine" disabled={saving} />
+        </View>
         <FoodField label="Calories per declared serving (kcal)" value={form.calories} numeric onChange={(value) => update('calories', value)} disabled={saving} error={submitted ? errors.calories : undefined} />
         <FoodField label="Serving amount" value={form.serving_amount} numeric onChange={(value) => update('serving_amount', value)} disabled={saving} error={submitted ? errors.serving_amount : undefined} />
         <ServingUnitPicker value={form.serving_unit} onChange={(value) => update('serving_unit', value)} disabled={saving} />

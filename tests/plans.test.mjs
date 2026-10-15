@@ -144,7 +144,10 @@ test('migration 5 preserves legacy plan IDs, gram snapshots and local dates; int
   const r = createRepositories(db, randomUUID, now);
   const profileId = randomUUID();
   await db.runAsync('INSERT INTO user_profiles (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)', profileId, 'Legacy user', now(), now());
-  const foodId = await r.foods.createCustom(food);
+  // Seed the legacy schema directly; current repositories require current migrations.
+  const foodId = randomUUID();
+  await db.runAsync(`INSERT INTO foods (id, name, search_key, calories, serving_amount, serving_unit, source, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, foodId, food.name, food.name.toLowerCase(), food.calories, food.serving_amount, food.serving_unit, 'custom', now(), now());
   const at = '2026-10-19T23:30:00.000Z';
   await db.runAsync('INSERT INTO planned_meals VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 'legacy-plan', profileId, foodId, 'Historical plan', 100, null, 20, 4, 50, at, now());
   const original = db.execAsync;

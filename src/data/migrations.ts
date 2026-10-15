@@ -274,6 +274,12 @@ export const migrations = [{
       PRIMARY KEY (profile_id, effective_date)
     );
   `,
+}, {
+  version: 7,
+  sql: `
+    ALTER TABLE foods ADD COLUMN cuisine TEXT CHECK (cuisine IN ('myanmar', 'japanese', 'western', 'chinese'));
+    CREATE INDEX foods_cuisine_name_idx ON foods(cuisine, name COLLATE NOCASE, id);
+  `,
 }] as const;
 
 export async function initializeDatabase(db: Database) {

@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
 import { createProfileForm, calorieProfileFromForm, completedProfileInput, profileSetupErrors } from '../src/navigation/profileSetup.ts';
-import { initializeDatabase } from '../src/data/migrations.ts';
+import { initializeDatabase, migrations } from '../src/data/migrations.ts';
 import { createRepositories } from '../src/data/repositories.ts';
 import { adapt } from './sqlite.mjs';
 
@@ -53,5 +53,5 @@ test('finishing setup updates the existing SQLite profile without losing prior d
   assert.equal((await reopened.diary.listDay('2026-10-14')).length, 1);
   assert.equal((await reopened.plans.listDay('2026-10-15')).length, 1);
   assert.equal((await reopened.weights.list(id)).length, 1);
-  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 6);
+  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, migrations.at(-1).version);
 });

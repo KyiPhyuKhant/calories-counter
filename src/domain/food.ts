@@ -1,6 +1,15 @@
 export const servingUnits = ['g', 'kg', 'oz', 'ml', 'cup', 'piece', 'serving'] as const;
 export type ServingUnit = typeof servingUnits[number];
 export type FoodSource = 'bundled' | 'external' | 'custom';
+export const cuisines = ['myanmar', 'japanese', 'western', 'chinese'] as const;
+export type Cuisine = typeof cuisines[number];
+export const cuisineLabels: Record<Cuisine, string> = {
+  myanmar: 'Myanmar', japanese: 'Japanese', western: 'Western', chinese: 'Chinese',
+};
+
+export function isCuisine(value: unknown): value is Cuisine {
+  return typeof value === 'string' && cuisines.includes(value as Cuisine);
+}
 
 export interface FoodInput {
   name: string;
@@ -11,6 +20,7 @@ export interface FoodInput {
   carbohydrates?: number | null;
   fat?: number | null;
   notes?: string | null;
+  cuisine?: Cuisine | null;
 }
 export interface Food extends Required<FoodInput> {
   id: string;
@@ -41,6 +51,7 @@ export function validateFood(input: FoodInput): Partial<Record<keyof FoodInput, 
     if (value != null && (!Number.isFinite(value) || value < 0 || value > 100000)) errors[key] = 'Enter a nonnegative amount in grams, or leave blank.';
   }
   if ((input.notes?.length ?? 0) > 2000) errors.notes = 'Keep notes within 2000 characters.';
+  if (input.cuisine != null && !isCuisine(input.cuisine)) errors.cuisine = 'Select a supported cuisine or leave it unspecified.';
   return errors;
 }
 
