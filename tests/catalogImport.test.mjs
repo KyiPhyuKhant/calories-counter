@@ -40,6 +40,13 @@ test('Western stage retains 30 supplied dishes, optional native names, and unreg
   assert.equal(foodImage('oatmeal.png'), undefined);
 });
 
+test('Chinese stage adds 30 supplied native-name dishes and keeps their stable IDs distinct', () => {
+  const foods = bundledFoodCatalog.foods.filter((food) => food.cuisine === 'chinese');
+  assert.equal(foods.length, 30); assert.ok(foods.every((food) => food.native_name && food.id.startsWith('catalog:chinese:')));
+  assert.ok(foods.some((food) => food.name === 'Mapo Tofu'));
+  assert.ok(foods.some((food) => food.name === 'Peking Duck'));
+});
+
 test('bundled manifest validates unique stable IDs and never substitutes invented nutrition', () => {
   const foods = parseFoodCatalog(bundledFoodCatalog);
   assert.ok(foods.length >= 30);

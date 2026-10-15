@@ -8,6 +8,7 @@ serving amounts, notes, image references, and null nutrition values are retained
 These are catalog metadata, not verified nutrition or validated portions.
 The Myanmar and Japanese stages each add the 30 supplied dishes with native names.
 The Western stage adds 30 supplied dishes; native names are unavailable in that data.
+The Chinese stage adds 30 supplied dishes with their Chinese names and stable IDs.
 
 `DatabaseProvider` runs migrations and then `seedBundledFoodCatalog` before
 exposing repositories or screens. `importFoodCatalog` validates the manifest,
