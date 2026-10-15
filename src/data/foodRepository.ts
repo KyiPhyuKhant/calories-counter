@@ -20,6 +20,13 @@ export function foodValues(input: FoodInput) {
 export const foodColumns = `name, search_key, calories, serving_amount, serving_unit, protein, carbohydrates, fat, notes,
   calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g`;
 
+// Keep bundled placeholders stored, but prefer a usable personal version in search.
+const visibleInLibrary = `(foods.source != 'bundled' OR foods.calories IS NOT NULL OR NOT EXISTS (
+  SELECT 1 FROM foods AS personal WHERE personal.source = 'custom' AND personal.calories IS NOT NULL
+    AND personal.search_key = foods.search_key AND personal.cuisine IS foods.cuisine
+    AND personal.serving_amount = foods.serving_amount AND personal.serving_unit = foods.serving_unit
+))`;
+
 export async function insertBundledFood(tx: SqlExecutor, id: string, input: FoodInput) {
   await tx.runAsync(`INSERT INTO foods (id, ${foodColumns}, source, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'bundled', ?, ?)`,
@@ -71,12 +78,13 @@ export function createFoodRepository(db: Database, newId: () => string, now: () 
       if (!Number.isInteger(limit) || limit < 1 || limit > 100 || !Number.isInteger(offset) || offset < 0) throw new Error('Invalid search page.');
       if (cuisine !== null && !isCuisine(cuisine)) throw new Error('Invalid cuisine filter.');
       const expression = foodSearchExpression(query);
-      const filter = cuisine === null ? '' : 'WHERE cuisine = ?';
+      const filter = cuisine === null ? '' : 'AND foods.cuisine = ?';
       const filterParams = cuisine === null ? [] : [cuisine];
-      if (!query.trim()) return (await db.getAllAsync<Food>(`SELECT * FROM foods ${filter} ORDER BY name COLLATE NOCASE, id LIMIT ? OFFSET ?`, ...filterParams, limit, offset)).map(decodeFood);
+      if (!query.trim()) return (await db.getAllAsync<Food>(`SELECT foods.* FROM foods WHERE ${visibleInLibrary} ${filter}
+        ORDER BY foods.name COLLATE NOCASE, foods.id LIMIT ? OFFSET ?`, ...filterParams, limit, offset)).map(decodeFood);
       if (!expression) return [];
       return (await db.getAllAsync<Food>(`SELECT foods.* FROM foods JOIN food_search ON food_search.rowid = foods.rowid
-        WHERE food_search MATCH ? ${cuisine === null ? '' : 'AND foods.cuisine = ?'}
+        WHERE food_search MATCH ? AND ${visibleInLibrary} ${filter}
         ORDER BY foods.name COLLATE NOCASE, foods.id LIMIT ? OFFSET ?`, expression, ...filterParams, limit, offset)).map(decodeFood);
     },
     createCustom,
