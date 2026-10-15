@@ -6,7 +6,7 @@ import { Plus, Search, X } from 'lucide-react-native';
 
 import { foodStyles as styles } from '@/components/foodUi';
 import { useRepositories } from '@/data/DatabaseProvider';
-import { cuisineLabels, type Cuisine, type Food } from '@/domain/food';
+import { cuisineLabels, hasKnownCalories, type Cuisine, type Food } from '@/domain/food';
 import { CuisinePicker } from '@/components/CuisinePicker';
 import { theme } from '@/theme/theme';
 import { AppButton } from '@/components/ui/AppButton';
@@ -63,12 +63,12 @@ export function FoodCatalogScreen({ onSelect, onAddCustom }: { onSelect?: (food:
         generation.current++; setLoading(true); setItems([]); setHasMore(false); setError(''); setCuisine(value);
       }} />
       <AppButton title="Add custom food" icon={Plus} onPress={onAddCustom ?? (() => router.push('/foods/edit'))} />
-      <Text style={styles.detail}>Offline catalog. Demo foods contain invented, unverified values.</Text>
+      <Text style={styles.detail}>Unverified catalog foods have no calorie values. Demo foods contain invented values.</Text>
     </View>
     <FlatList data={loading ? [] : items} keyExtractor={(food) => food.id} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets
       contentContainerStyle={local.list}
       renderItem={({ item }) => <FoodListItem food={item} selecting={Boolean(onSelect)}
-        onPress={() => onSelect ? onSelect(item) : router.push({ pathname: '/foods/[id]', params: { id: item.id } })} />}
+        onPress={() => onSelect && hasKnownCalories(item) ? onSelect(item) : router.push({ pathname: '/foods/[id]', params: { id: item.id } })} />}
       ListEmptyComponent={loading ? <ActivityIndicator accessibilityLabel="Searching foods" color={theme.colors.accent} />
         : !error ? <View style={styles.field}>
           <Text style={styles.body}>{cuisine === null ? 'No foods found.' : `No matching ${cuisineLabels[cuisine]} foods.`}</Text>

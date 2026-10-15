@@ -4,6 +4,7 @@ import { insertBundledFood } from './foodRepository.ts';
 import { normalizeFoodName } from '../domain/food.ts';
 import { localCalendarDate } from '../domain/diary.ts';
 import { recordCurrentTarget } from './targetHistory.ts';
+import { foodCatalogMigration } from './foodCatalogMigration.ts';
 
 const nutritionColumns = `
   name TEXT NOT NULL CHECK (length(trim(name)) > 0),
@@ -280,6 +281,9 @@ export const migrations = [{
     ALTER TABLE foods ADD COLUMN cuisine TEXT CHECK (cuisine IN ('myanmar', 'japanese', 'western', 'chinese'));
     CREATE INDEX foods_cuisine_name_idx ON foods(cuisine, name COLLATE NOCASE, id);
   `,
+}, {
+  version: 8,
+  sql: foodCatalogMigration,
 }] as const;
 
 export async function initializeDatabase(db: Database) {

@@ -3,7 +3,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { FoodField, foodSourceLabel, foodStyles as styles } from '@/components/foodUi';
+import { FoodField, foodSourceLabel, foodStyles as styles, isDevelopmentFood } from '@/components/foodUi';
 import { useRepositories } from '@/data/DatabaseProvider';
 import { calculateServing, type Food } from '@/domain/food';
 import { theme } from '@/theme/theme';
@@ -45,24 +45,30 @@ export function FoodDetailScreen() {
   let amountError = '';
   try {
     nutrition = calculateServing(food, parseFormNumber(amount));
-  } catch { amountError = 'Enter a positive amount up to 100000 in the declared unit.'; }
+  } catch (failure) { amountError = failure instanceof Error ? failure.message : 'Check the serving amount.'; }
   const display = (value: number | null) => value === null ? 'Not provided' : `${Number(value.toFixed(1))} g`;
 
   return <SafeAreaView edges={['left', 'right']} style={styles.screen}>
     <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
       <Text accessibilityRole="header" style={styles.title}>{food.name}</Text>
+      {food.native_name ? <Text style={styles.body}>{food.native_name}</Text> : null}
+      {food.aliases.length ? <Text style={styles.detail}>{food.aliases.join(' · ')}</Text> : null}
       <Text style={styles.detail}>{foodSourceLabel(food)}</Text>
-      {food.source === 'bundled' ? <Text style={styles.error}>Invented development values. Not verified nutritional data.</Text> : null}
+      {isDevelopmentFood(food) ? <Text style={styles.error}>Invented development values. Not verified nutritional data.</Text> : null}
+      {food.id.startsWith('catalog:') ? <Text style={styles.detail}>Serving basis is a placeholder, not a validated portion. Prepared dishes vary by ingredients, oil, and portion size.</Text> : null}
+      {food.nutrition_source ? <Text style={styles.detail}>Nutrition source: {food.nutrition_source}</Text> : null}
       {food.external_id ? <Text style={styles.detail}>Provider ID: {food.external_id}</Text> : null}
-      <Text style={styles.body}>Declared serving: {food.serving_amount} {food.serving_unit}, {Number(food.calories.toFixed(1))} kcal</Text>
+      <Text style={styles.body}>Declared serving: {food.serving_amount} {food.serving_unit}, {food.calories === null ? 'calories unavailable' : `${Number(food.calories.toFixed(1))} kcal`}</Text>
       <FoodField label={`Amount (${food.serving_unit})`} value={amount} numeric onChange={setAmount} error={amountError} />
       {nutrition ? <View style={styles.field}>
-        <Text style={styles.nutrition}>{Number(nutrition.calories.toFixed(1))} kcal</Text>
+        <Text style={styles.nutrition}>{nutrition.calories === null ? 'Calories unavailable' : `${Number(nutrition.calories.toFixed(1))} kcal`}</Text>
         <Text style={styles.body}>Protein: {display(nutrition.protein)}</Text>
         <Text style={styles.body}>Carbohydrates: {display(nutrition.carbohydrates)}</Text>
         <Text style={styles.body}>Fat: {display(nutrition.fat)}</Text>
       </View> : null}
       {food.notes ? <View style={styles.field}><Text style={styles.label}>Notes</Text><Text style={styles.body}>{food.notes}</Text></View> : null}
+      {food.source !== 'custom' ? <Pressable accessibilityRole="button" style={styles.button}
+        onPress={() => router.push({ pathname: '/foods/edit', params: { copyId: food.id } })}><Text style={styles.buttonText}>Create personal version</Text></Pressable> : null}
       {food.source === 'custom' ? <>
         <Pressable accessibilityRole="button" disabled={deleting} style={styles.button}
           onPress={() => router.push({ pathname: '/foods/edit', params: { id: food.id } })}><Text style={styles.buttonText}>Edit custom food</Text></Pressable>

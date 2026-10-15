@@ -74,7 +74,7 @@ export function DiaryEditorScreen({ planning = false }: { planning?: boolean }) 
   return <SafeAreaView edges={['left', 'right']} style={styles.screen}>
       <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={styles.content} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled">
         <Text accessibilityRole="header" style={styles.title}>{snapshot.name}</Text>
-        <Text style={styles.body}>{caloriesLabel(snapshot.calories)} per {snapshot.serving_amount} {snapshot.serving_unit}</Text>
+        <Text style={styles.body}>{snapshot.calories === null ? 'Calories unavailable' : caloriesLabel(snapshot.calories)} per {snapshot.serving_amount} {snapshot.serving_unit}</Text>
         {snapshot.source === 'bundled' ? <Text style={styles.error}>Invented development values, not verified nutritional data.</Text> : null}
         {id ? <Text style={styles.detail}>Nutrition saved when this food was {planning ? 'planned' : 'logged'}.</Text> : null}
         <View style={styles.field}><Text style={styles.label}>Date</Text><DiaryDateField value={date} onChange={setDate} disabled={saving} /></View>
@@ -95,7 +95,7 @@ export function DiaryEditorScreen({ planning = false }: { planning?: boolean }) 
           <Text style={styles.nutrition}>{caloriesLabel(preview.calories)}</Text>
           <Text style={styles.detail}>{Number(preview.amount.toFixed(3))} {snapshot.serving_unit}</Text>
         </View> : null}
-        <Pressable accessibilityRole="button" disabled={saving} style={[styles.button, saving ? styles.disabled : undefined]} onPress={save}>
+        <Pressable accessibilityRole="button" accessibilityState={{ disabled: saving || !preview }} disabled={saving || !preview} style={[styles.button, saving || !preview ? styles.disabled : undefined]} onPress={save}>
           <Text style={styles.buttonText}>{saving ? 'Saving...' : id ? 'Save changes' : planning ? 'Add to plan' : 'Log food'}</Text></Pressable>
         {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       </ScrollView>

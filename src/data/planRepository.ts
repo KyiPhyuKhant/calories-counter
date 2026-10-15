@@ -2,6 +2,7 @@ import type { Database, SqlExecutor } from './database.ts';
 import { writeNutritionSnapshot } from './snapshotWriter.ts';
 import { calculateDiaryNutrition, localCalendarDate, validateCalendarDate, validateDiaryInput, type DiaryEntry, type DiaryInput, type Meal } from '../domain/diary.ts';
 import { convertServingAmount, type Food } from '../domain/food.ts';
+import { decodeFood } from './foodMetadata.ts';
 
 export interface PlannedFood extends Omit<DiaryEntry, 'consumed_at'> {
   planned_at: string;
@@ -28,7 +29,7 @@ export function createPlanRepository(db: Database, newId: () => string, now: () 
       if (!profile) throw new Error('Local profile could not be opened.');
       profileId = profile.id;
     }
-    return writeNutritionSnapshot(tx, 'planned_meals', food, food.id, profileId, input, newId(), now(), at);
+    return writeNutritionSnapshot(tx, 'planned_meals', decodeFood(food), food.id, profileId, input, newId(), now(), at);
   }
 
   function validateEatenDate(date: string) {

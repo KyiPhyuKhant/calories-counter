@@ -7,6 +7,7 @@ import { theme } from '@/theme/theme';
 
 import { initializeDatabase } from './migrations';
 import { createRepositories, type Repositories } from './repositories';
+import { seedBundledFoodCatalog } from './bundledFoodCatalog';
 
 const RepositoryContext = createContext<Repositories | null>(null);
 
@@ -20,6 +21,7 @@ async function initializeRepositories() {
   });
   const db = await connection;
   await initializeDatabase(db);
+  await seedBundledFoodCatalog(db);
   return createRepositories(db, randomUUID);
 }
 

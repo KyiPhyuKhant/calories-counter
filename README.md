@@ -143,11 +143,9 @@ diary snapshots, and plans are unchanged. Omitted cuisine values on repository
 updates preserve the saved category; explicit `null` clears it. Custom duplicate
 rules remain unchanged, so selecting a different cuisine does not bypass them.
 
-This first multicultural-catalog stage adds cuisine filtering only. Aliases,
-native/romanized alternative-name indexing, cuisine dish imports, nutrition
-provenance, image-path storage, and recipe calculations are not implemented yet.
-No cuisine-specific dish data or nutritional values have been added. Existing
-square thumbnail presentation and offline Unicode name search are retained.
+Multicultural catalog details, import behavior, and nutrition limitations are
+documented in [FOOD_CATALOG.md](FOOD_CATALOG.md). Migration 8 adds nullable catalog
+calories and multilingual metadata without changing historical diary snapshots.
 
 Open the dashboard's food catalog button to search locally, view serving nutrition, or add
 a custom food. Only custom foods can be edited or deleted. Catalog searches use

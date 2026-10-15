@@ -115,11 +115,12 @@ test('migration 7 preserves existing food records without classifying, replacing
   const original = await db.getFirstAsync('SELECT * FROM foods WHERE id = ?', 'legacy-food');
   await initializeDatabase(db); await initializeDatabase(db);
   const saved = await db.getFirstAsync('SELECT * FROM foods WHERE id = ?', 'legacy-food');
-  assert.deepEqual({ ...saved }, { ...original, cuisine: null });
+  for (const [key, value] of Object.entries(original)) assert.deepEqual(saved[key], value);
+  assert.equal(saved.cuisine, null);
   assert.deepEqual(await r.diary.listDay('2026-10-15'), diary);
   assert.deepEqual(await r.plans.listDay('2026-10-16'), plans);
   assert.equal((await db.getFirstAsync('SELECT count(*) AS count FROM foods')).count, 1);
-  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 7);
+  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, migrations.at(-1).version);
   assert.deepEqual(await db.getAllAsync('PRAGMA foreign_key_check'), []);
   assert.equal((await createRepositories(db, randomUUID).foods.search('existing'))[0].id, 'legacy-food');
   const plan = await db.getAllAsync('EXPLAIN QUERY PLAN SELECT * FROM foods WHERE cuisine = ? ORDER BY name COLLATE NOCASE, id LIMIT ? OFFSET ?', 'myanmar', 50, 0);

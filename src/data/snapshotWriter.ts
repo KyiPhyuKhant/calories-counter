@@ -3,7 +3,7 @@ import { convertServingAmount, nutritionPer100g } from '../domain/food.ts';
 import type { SqlExecutor } from './database.ts';
 
 export type NutritionSnapshot = Pick<DiaryEntry, 'name' | 'source' | 'provider' | 'external_id' |
-  'serving_amount' | 'serving_unit' | 'calories' | 'protein' | 'carbohydrates' | 'fat' | 'notes'>;
+  'serving_amount' | 'serving_unit' | 'protein' | 'carbohydrates' | 'fat' | 'notes'> & { calories: number | null };
 
 export async function writeNutritionSnapshot(
   tx: SqlExecutor, table: 'diary_entries' | 'planned_meals', snapshot: NutritionSnapshot,

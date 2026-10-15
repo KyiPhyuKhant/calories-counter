@@ -7,8 +7,12 @@ import { theme } from '@/theme/theme';
 import { AppInput } from '@/components/ui/AppInput';
 
 export function foodSourceLabel(food: Food) {
-  return food.source === 'bundled' ? 'Bundled development sample - unverified'
+  return food.source === 'bundled' ? (isDevelopmentFood(food) ? 'Bundled development sample - unverified' : 'Bundled food catalog - nutrition unverified')
     : food.source === 'external' ? `External (${food.provider}) - saved locally` : 'Custom food';
+}
+
+export function isDevelopmentFood(food: Pick<Food, 'source' | 'nutrition_status'>) {
+  return food.source === 'bundled' && (food.nutrition_status === 'development' || food.nutrition_status === undefined);
 }
 
 export function FoodField({ label, value, onChange, error, numeric = false, multiline = false, disabled = false }: {

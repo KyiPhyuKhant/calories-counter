@@ -5,6 +5,7 @@ import {
 import { convertServingAmount, type Food } from '../domain/food.ts';
 import type { Database, SqlExecutor } from './database.ts';
 import { writeNutritionSnapshot } from './snapshotWriter.ts';
+import { decodeFood } from './foodMetadata.ts';
 
 export function createDiaryRepository(db: Database, newId: () => string, now: () => string) {
   async function profileForLogging(tx: SqlExecutor, requested?: string) {
@@ -23,7 +24,7 @@ export function createDiaryRepository(db: Database, newId: () => string, now: ()
 
   async function insert(tx: SqlExecutor, food: Food, input: DiaryInput, requestedProfile?: string, consumedAt = now()) {
     const profile = await profileForLogging(tx, requestedProfile);
-    return writeNutritionSnapshot(tx, 'diary_entries', food, food.id, profile, input, newId(), now(), consumedAt);
+    return writeNutritionSnapshot(tx, 'diary_entries', decodeFood(food), food.id, profile, input, newId(), now(), consumedAt);
   }
 
   async function addEntry(foodId: string, input: DiaryInput, profileId?: string) {

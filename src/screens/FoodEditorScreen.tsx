@@ -11,16 +11,18 @@ import { theme } from '@/theme/theme';
 import { parseFormNumber } from '@/domain/formNumber';
 import { goBack } from '@/navigation/navigation';
 
-type Form = { name: string; cuisine: Cuisine | null; calories: string; serving_amount: string; serving_unit: ServingUnit; protein: string; carbohydrates: string; fat: string; notes: string };
-const initial: Form = { name: '', cuisine: null, calories: '', serving_amount: '100', serving_unit: 'g', protein: '', carbohydrates: '', fat: '', notes: '' };
+type Form = { name: string; cuisine: Cuisine | null; native_name: string; aliases: string; nutrition_source: string; category: FoodInput['category']; image: string | null; calories: string; serving_amount: string; serving_unit: ServingUnit; protein: string; carbohydrates: string; fat: string; notes: string };
+const initial: Form = { name: '', cuisine: null, native_name: '', aliases: '', nutrition_source: '', category: null, image: null, calories: '', serving_amount: '100', serving_unit: 'g', protein: '', carbohydrates: '', fat: '', notes: '' };
 
 export function FoodEditorScreen({ onCreated }: { onCreated?: (id: string) => void } = {}) {
-  const { id: param } = useLocalSearchParams<{ id?: string | string[] }>();
+  const { id: param, copyId: copyParam } = useLocalSearchParams<{ id?: string | string[]; copyId?: string | string[] }>();
   const id = Array.isArray(param) ? param[0] : param;
+  const copyId = Array.isArray(copyParam) ? copyParam[0] : copyParam;
+  const loadId = id ?? copyId;
   const { foods } = useRepositories();
   const router = useRouter();
   const [form, setForm] = useState<Form>(initial);
-  const [loading, setLoading] = useState(Boolean(id));
+  const [loading, setLoading] = useState(Boolean(loadId));
   const [loadError, setLoadError] = useState('');
   const [attempt, setAttempt] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -29,23 +31,26 @@ export function FoodEditorScreen({ onCreated }: { onCreated?: (id: string) => vo
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!id) return;
+    if (!loadId) return;
     let active = true;
-    foods.get(id).then((food) => {
+    foods.get(loadId).then((food) => {
       if (!active) return;
-      if (!food || food.source !== 'custom') { setLoadError('This custom food is unavailable.'); setLoading(false); return; }
-      setForm({ name: food.name, cuisine: food.cuisine, calories: food.calories.toString(), serving_amount: food.serving_amount.toString(),
+      if (!food || (id && food.source !== 'custom')) { setLoadError('This food is unavailable.'); setLoading(false); return; }
+      setForm({ name: food.name, cuisine: food.cuisine, native_name: food.native_name ?? '', aliases: food.aliases.join(', '), nutrition_source: food.nutrition_source ?? '', category: food.category, image: food.image,
+        calories: food.calories?.toString() ?? '', serving_amount: food.serving_amount.toString(),
         serving_unit: food.serving_unit, protein: food.protein?.toString() ?? '', carbohydrates: food.carbohydrates?.toString() ?? '',
         fat: food.fat?.toString() ?? '', notes: food.notes ?? '' });
       setLoading(false);
     }).catch(() => { if (active) { setLoadError('Could not load this food.'); setLoading(false); } });
     return () => { active = false; };
-  }, [foods, id, attempt]);
+  }, [foods, id, loadId, attempt]);
 
   function update<K extends keyof Form>(key: K, value: Form[K]) {
     setForm((previous) => ({ ...previous, [key]: value })); setError('');
   }
-  const input: FoodInput = { ...form, calories: parseFormNumber(form.calories), serving_amount: parseFormNumber(form.serving_amount),
+  const input: FoodInput = { ...form, native_name: form.native_name || null, aliases: form.aliases.split(/[,;\n]/).map((name) => name.trim()).filter(Boolean),
+    nutrition_source: form.nutrition_source || null, nutrition_status: form.calories.trim() ? 'user_entered' : 'unverified',
+    calories: form.calories.trim() ? parseFormNumber(form.calories) : null, serving_amount: parseFormNumber(form.serving_amount),
     protein: form.protein.trim() ? parseFormNumber(form.protein) : null,
     carbohydrates: form.carbohydrates.trim() ? parseFormNumber(form.carbohydrates) : null,
     fat: form.fat.trim() ? parseFormNumber(form.fat) : null };
@@ -74,10 +79,14 @@ export function FoodEditorScreen({ onCreated }: { onCreated?: (id: string) => vo
       <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
         <Text accessibilityRole="header" style={styles.title}>{id ? 'Edit custom food' : 'New custom food'}</Text>
         <FoodField label="Food name" value={form.name} onChange={(value) => update('name', value)} disabled={saving} error={submitted ? errors.name : undefined} />
+        <FoodField label="Native name (optional)" value={form.native_name} onChange={(value) => update('native_name', value)} disabled={saving} error={submitted ? errors.native_name : undefined} />
+        <FoodField label="Alternative or romanized names (comma separated)" value={form.aliases} multiline onChange={(value) => update('aliases', value)} disabled={saving} error={submitted ? errors.aliases : undefined} />
         <View style={styles.field}><Text style={styles.label}>Cuisine (optional)</Text>
           <CuisinePicker value={form.cuisine} onChange={(value) => update('cuisine', value)} emptyLabel="Unspecified cuisine" disabled={saving} />
         </View>
-        <FoodField label="Calories per declared serving (kcal)" value={form.calories} numeric onChange={(value) => update('calories', value)} disabled={saving} error={submitted ? errors.calories : undefined} />
+        <FoodField label="Calories per declared serving (kcal, optional)" value={form.calories} numeric onChange={(value) => update('calories', value)} disabled={saving} error={submitted ? errors.calories : undefined} />
+        {!form.calories.trim() ? <Text style={styles.detail}>Calories unavailable. This food cannot be logged or planned yet.</Text> : null}
+        <FoodField label="Nutrition source or measured recipe (optional)" value={form.nutrition_source} multiline onChange={(value) => update('nutrition_source', value)} disabled={saving} error={submitted ? errors.nutrition_source : undefined} />
         <FoodField label="Serving amount" value={form.serving_amount} numeric onChange={(value) => update('serving_amount', value)} disabled={saving} error={submitted ? errors.serving_amount : undefined} />
         <ServingUnitPicker value={form.serving_unit} onChange={(value) => update('serving_unit', value)} disabled={saving} />
         {(['protein', 'carbohydrates', 'fat'] as const).map((key) => <FoodField key={key}

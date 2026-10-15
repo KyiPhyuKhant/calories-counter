@@ -59,7 +59,9 @@ export function validateDiaryInput(input: DiaryInput) {
 export function calculateDiaryNutrition(food: FoodInput, input: DiaryInput) {
   validateDiaryInput(input);
   const amount = input.quantity_mode === 'servings' ? input.quantity * food.serving_amount : input.quantity;
-  return { amount, ...calculateServing(food, amount) };
+  const nutrition = calculateServing(food, amount);
+  if (nutrition.calories === null) throw new Error('Calories are unavailable. Provide nutrition for your own portion before logging or planning this food.');
+  return { amount, ...nutrition, calories: nutrition.calories };
 }
 
 export function dailyTotals(entries: Pick<DiaryEntry, 'meal' | 'total_calories'>[]) {
