@@ -33,6 +33,13 @@ test('Myanmar and Japanese stages each contain the 30 supplied dishes with nativ
   }
 });
 
+test('Western stage retains 30 supplied dishes, optional native names, and unregistered local image references', () => {
+  const foods = bundledFoodCatalog.foods.filter((food) => food.cuisine === 'western');
+  assert.equal(foods.length, 30); assert.ok(foods.every((food) => food.native_name === null));
+  assert.equal(foods.find((food) => food.name === 'Oatmeal').image, 'oatmeal.png');
+  assert.equal(foodImage('oatmeal.png'), undefined);
+});
+
 test('bundled manifest validates unique stable IDs and never substitutes invented nutrition', () => {
   const foods = parseFoodCatalog(bundledFoodCatalog);
   assert.ok(foods.length >= 30);
