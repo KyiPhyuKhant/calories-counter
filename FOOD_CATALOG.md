@@ -9,6 +9,9 @@ These are catalog metadata, not verified nutrition or validated portions.
 The Myanmar and Japanese stages each add the 30 supplied dishes with native names.
 The Western stage adds 30 supplied dishes; native names are unavailable in that data.
 The Chinese stage adds 30 supplied dishes with their Chinese names and stable IDs.
+The final common-ingredient stage adds 30 uncategorized foods, completing all 150
+attachment records: 30 Myanmar, 30 Japanese, 30 Western, 30 Chinese, and 30 common
+ingredients. All 150 have unavailable calories and macros in the supplied data.
 
 `DatabaseProvider` runs migrations and then `seedBundledFoodCatalog` before
 exposing repositories or screens. `importFoodCatalog` validates the manifest,
@@ -88,3 +91,21 @@ logging/planning, custom versions, recipe math, and reopen persistence. Upgrade
 tests verify old food IDs and rowids, diary snapshots, plan/eaten receipts,
 targets, and foreign keys survive migration 8, including an interrupted upgrade.
 Restart the app to run startup migrations and seeding; never reset a real database.
+
+Validation on 2026-10-15:
+
+| Stage | TypeScript | Tests | Lint |
+| --- | --- | --- | --- |
+| Myanmar and import infrastructure | Pass | 107 passed | Pass |
+| Japanese | Pass | 108 passed | Pass |
+| Western | Pass | 109 passed | Pass |
+| Chinese | Pass | 110 passed | Pass |
+| Common ingredients, complete attachment | Pass | 111 passed | Pass |
+
+A structured comparison confirmed that all 150 combined records exactly match
+the supplied JSON. The final iOS bundle export passed. Expo Go on an iPhone 16 Pro
+simulator (iOS 18.6) opened successfully after native SQLite migration and seeding.
+The Foods list, Mohinga's Myanmar-name detail screen, and personal-version form
+were inspected through deep links without writing test diary/profile data or
+bypassing onboarding. Physical-device interaction, VoiceOver, keyboard editing,
+and saving the personal-version form still need manual acceptance testing.

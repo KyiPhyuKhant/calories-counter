@@ -47,6 +47,13 @@ test('Chinese stage adds 30 supplied native-name dishes and keeps their stable I
   assert.ok(foods.some((food) => food.name === 'Peking Duck'));
 });
 
+test('the complete attachment contains 150 foods including 30 uncategorized common ingredients', () => {
+  assert.equal(bundledFoodCatalog.foods.length, 150);
+  const foods = bundledFoodCatalog.foods.filter((food) => food.cuisine === null);
+  assert.equal(foods.length, 30); assert.ok(foods.every((food) => food.category === 'ingredient' && food.id.startsWith('catalog:common:')));
+  for (const name of ['White Rice', 'Boiled Egg', 'Chicken Breast', 'Beef Steak', 'Pork', 'Salmon', 'Broccoli', 'Apple', 'Low Fat Milk']) assert.ok(foods.some((food) => food.name === name));
+});
+
 test('bundled manifest validates unique stable IDs and never substitutes invented nutrition', () => {
   const foods = parseFoodCatalog(bundledFoodCatalog);
   assert.ok(foods.length >= 30);
