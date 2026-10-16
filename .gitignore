@@ -11,9 +11,15 @@ coverage/
 *.db
 *.db-wal
 *.db-shm
+*.db-journal
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
+*.sqlite-journal
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+*.sqlite3-journal
 
 # Generated native projects (Expo Continuous Native Generation)
 /ios/
@@ -24,6 +30,8 @@ DerivedData/
 *.xcuserstate
 xcuserdata/
 *.ipa
+*.app/
+*.xcarchive/
 *.dSYM/
 
 # Local configuration, credentials, and signing material
@@ -32,10 +40,14 @@ xcuserdata/
 .env.*
 !.env.example
 .npmrc
+.netrc
+*.key
 *.pem
 *.p8
 *.p12
+*.pfx
 *.mobileprovision
+*.provisionprofile
 *.keystore
 *.jks
 credentials.json

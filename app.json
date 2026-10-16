@@ -13,7 +13,14 @@
       "android"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kyijuly.calnote",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "plugins": [
       "expo-router",
@@ -23,6 +30,20 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "fbb3b677-a781-4354-bd56-db5a8a814f08"
+      }
+    },
+    "owner": "kyi-july",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/fbb3b677-a781-4354-bd56-db5a8a814f08"
+    },
+    "android": {}
   }
 }
