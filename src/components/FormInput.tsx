@@ -21,5 +21,5 @@ export function FormInput({ error, ...props }: TextInputProps & { error?: string
 const styles = StyleSheet.create({
   toolbar: { borderTopWidth: 1, borderColor: theme.colors.border, alignItems: 'flex-end', paddingHorizontal: 16 },
   done: { minHeight: 44, minWidth: 60, alignItems: 'center', justifyContent: 'center' },
-  label: { color: theme.colors.accent, fontSize: 17, fontWeight: '600' },
+  label: { ...theme.typography.button, color: theme.colors.accent },
 });

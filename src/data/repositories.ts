@@ -8,6 +8,7 @@ import { createPlanRepository } from './planRepository.ts';
 import { createWeightRepository } from './weightRepository.ts';
 import { createHistoryRepository } from './historyRepository.ts';
 import { recordCurrentTarget } from './targetHistory.ts';
+import { clearAppData } from './clearAppData.ts';
 
 export interface Profile {
   id: string;
@@ -95,6 +96,7 @@ export function createRepositories(db: Database, newId: () => string, now = () =
   }
   return {
     ...repositories,
+    data: { clearAll: observe(() => clearAppData(db)) },
     profiles: { ...repositories.profiles,
       save: observe(repositories.profiles.save),
       saveCalorieProfile: observe(repositories.profiles.saveCalorieProfile),

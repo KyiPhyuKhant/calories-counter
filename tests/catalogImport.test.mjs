@@ -166,7 +166,7 @@ test('unknown foods cannot enter consumed or planned snapshots and failed loggin
 test('unknown catalog rows render unavailable, not zero, and missing or remote images use no unrelated asset', () => {
   const result = renderUI('FoodListItem', { food: { ...first, source: 'bundled' }, selecting: true, onPress() {} });
   assert.match(result.markup, /ကယ်လိုရီ မသိရှိသေးပါ/); assert.doesNotMatch(result.markup, /0 kcal|invented|development sample/);
-  assert.equal(result.nodes.find(({ type }) => type === 'Pressable').props.accessibilityHint, 'အစားအစာအချက်အလက် ကြည့်ရန်');
+  assert.equal(result.nodes.find(({ type }) => type === 'Pressable').props.accessibilityHint, 'အချက်အလက် ကြည့်ရန်');
   assert.equal(result.nodes.some(({ type }) => type === 'Image'), false);
   assert.equal(foodImage('nonexistent.png'), undefined); assert.equal(foodImage('https://example.com/food.png'), undefined);
 });

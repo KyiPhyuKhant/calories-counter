@@ -21,7 +21,7 @@ function host(type) {
     return React.createElement(type === 'Text' ? 'span' : 'div', null, props.children);
   };
 }
-const native = {
+export const native = {
   Platform: { OS: 'ios' }, Keyboard: { dismiss() {} },
   useWindowDimensions: () => ({ width: 390, height: 844, scale: 3, fontScale: 1 }),
   StyleSheet: { create: (styles) => styles },
@@ -31,6 +31,7 @@ const svg = { __esModule: true, default: host('Svg'), ...Object.fromEntries(['Ci
 const icons = new Proxy({ __esModule: true }, { get: (target, key) => key in target ? target[key] : () => null });
 
 function load(filename) {
+  if (filename.endsWith('.png')) return { uri: filename };
   if (filename.endsWith('.json')) return JSON.parse(readFileSync(filename, 'utf8'));
   if (cache.has(filename)) return cache.get(filename).exports;
   const module = { exports: {} }; cache.set(filename, module);

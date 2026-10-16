@@ -1,8 +1,10 @@
 {
   "expo": {
-    "name": "Calorie Counter",
+    "name": "CalNote",
     "slug": "calories-counter",
     "version": "0.1.0",
+    "icon": "./assets/healthy-bowl-logo.png",
+    "backgroundColor": "#FAFAF7",
     "scheme": "calories-counter",
     "orientation": "portrait",
     "userInterfaceStyle": "light",

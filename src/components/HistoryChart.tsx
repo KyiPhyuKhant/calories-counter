@@ -8,7 +8,7 @@ import type { HistoryDay } from '@/domain/history';
 import { chartConnections, historyChartModel } from '@/domain/historyChart';
 import { theme } from '@/theme/theme';
 
-const colors = { under: theme.colors.accent, at: theme.colors.planning, over: '#A65A3C', 'no-target': '#526159', 'no-log': '#526159', future: '#526159' };
+const colors = { under: theme.colors.accent, at: theme.colors.planning, over: theme.colors.warning, 'no-target': theme.colors.secondaryText, 'no-log': theme.colors.secondaryText, future: theme.colors.secondaryText };
 const labels = { under: 'Under target', at: 'At target', over: 'Over target', 'no-target': 'Target unknown', 'no-log': 'No food logged', future: 'Future date' };
 const kg = (value: number) => `${Number(value.toFixed(2))} kg`;
 

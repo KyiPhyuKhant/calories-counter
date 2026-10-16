@@ -10,8 +10,9 @@ import {
   activityLevels, calculateCalorieGoal, validateCalorieProfile,
   type ActivityLevel, type EquationSex, type Goal,
 } from '@/domain/calorieGoal';
-import { theme } from '@/theme/theme';
+import { theme, uiStyles } from '@/theme/theme';
 import { FormInput } from '@/components/FormInput';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { calorieProfileFromForm, createProfileForm, type ProfileForm } from '@/navigation/profileSetup';
 
 function NumericField({ label, value, onChange, error, disabled, integer = false }: {
@@ -32,23 +33,13 @@ function NumericField({ label, value, onChange, error, disabled, integer = false
 }
 
 function Segments<T extends string>({ label, value, options, onChange, disabled }: {
-  label: string; value: string; options: { value: T; label: string }[];
+  label: string; value: T | ''; options: { value: T; label: string }[];
   onChange: (value: T) => void; disabled: boolean;
 }) {
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
-      <View style={styles.segments}>
-        {options.map((option) => (
-          <Pressable key={option.value} accessibilityRole="radio"
-            accessibilityLabel={`${label}: ${option.label}`}
-            accessibilityState={{ checked: value === option.value, disabled }}
-            disabled={disabled} onPress={() => onChange(option.value)}
-            style={[styles.segment, value === option.value ? styles.selected : undefined]}>
-            <Text style={[styles.segmentText, value === option.value ? styles.selectedText : undefined]}>{option.label}</Text>
-          </Pressable>
-        ))}
-      </View>
+      <SegmentedControl label={label} value={value} options={options} onChange={onChange} disabled={disabled} role="radio" />
     </View>
   );
 }
@@ -204,27 +195,23 @@ export function ProfileScreen({ mode = 'profile' }: { mode?: 'profile' | 'goal' 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.background },
   status: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 16, padding: 24 },
-  content: { padding: 24, gap: 20, width: '100%', maxWidth: 560, alignSelf: 'center' },
-  title: { fontSize: 28, lineHeight: 36, fontWeight: '700', color: theme.colors.text },
-  body: { fontSize: 17, lineHeight: 26, color: theme.colors.text },
-  detail: { fontSize: 14, lineHeight: 22, color: theme.colors.secondaryText },
-  label: { fontSize: 16, lineHeight: 24, fontWeight: '600', color: theme.colors.text },
-  field: { gap: 8 },
-  input: { minHeight: 48, padding: 12, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, backgroundColor: theme.colors.surface, fontSize: 17, color: theme.colors.text },
-  invalidInput: { borderColor: '#A12828' },
-  error: { color: '#A12828', fontSize: 14, lineHeight: 22 },
-  segments: { flexDirection: 'row', gap: 8, alignItems: 'stretch' },
-  segment: { flex: 1, minHeight: 48, padding: 10, borderRadius: 8, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, justifyContent: 'center', alignItems: 'center' },
-  segmentText: { fontSize: 16, lineHeight: 24, color: theme.colors.text, textAlign: 'center' },
+  content: uiStyles.page,
+  title: { ...theme.typography.title, color: theme.colors.text },
+  body: { ...theme.typography.body, color: theme.colors.text },
+  detail: { ...theme.typography.caption, color: theme.colors.secondaryText },
+  label: { ...theme.typography.label, color: theme.colors.text },
+  field: uiStyles.field,
+  input: { ...uiStyles.input, ...theme.typography.body, color: theme.colors.text },
+  invalidInput: { borderColor: theme.colors.danger },
+  error: { ...theme.typography.caption, color: theme.colors.danger },
   selected: { backgroundColor: theme.colors.accentSurface, borderColor: theme.colors.accent },
-  selectedText: { color: theme.colors.accent, fontWeight: '600' },
-  estimate: { padding: 20, gap: 8, borderRadius: 8, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border },
-  estimateTitle: { fontSize: 20, lineHeight: 28, fontWeight: '600', color: theme.colors.text },
-  target: { fontSize: 28, lineHeight: 36, fontWeight: '700', color: theme.colors.accent },
+  estimate: { padding: theme.spacing.medium, gap: theme.spacing.small, borderRadius: theme.radius.card, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border },
+  estimateTitle: { ...theme.typography.heading, color: theme.colors.text },
+  target: { ...theme.typography.metric, color: theme.colors.accent },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   switchLabel: { flex: 1 },
-  button: { minHeight: 48, padding: 16, borderRadius: 8, backgroundColor: theme.colors.accent, alignItems: 'center', justifyContent: 'center' },
-  buttonText: { color: '#FFFFFF', fontSize: 17, lineHeight: 24, fontWeight: '600' },
+  button: uiStyles.button,
+  buttonText: { ...theme.typography.button, color: theme.colors.onPrimary },
   disabled: { opacity: 0.6 },
-  activityOption: { padding: 16, gap: 8, minHeight: 64, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8 },
+  activityOption: { ...uiStyles.input, gap: theme.spacing.small, minHeight: 64 },
 });

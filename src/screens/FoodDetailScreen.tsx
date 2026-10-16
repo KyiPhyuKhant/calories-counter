@@ -74,7 +74,7 @@ export function FoodDetailScreen() {
         <Pressable accessibilityRole="button" disabled={deleting} style={[styles.button, styles.destructive]}
           onPress={() => Alert.alert(foodText.deleteTitle, foodText.deleteHint, [
             { text: foodText.cancel, style: 'cancel' }, { text: foodText.remove, style: 'destructive', onPress: remove },
-          ])}><Text style={styles.buttonText}>{deleting ? 'ဖျက်နေသည်…' : foodText.remove}</Text></Pressable>
+          ])}><Text style={[styles.buttonText, styles.destructiveText]}>{deleting ? 'ဖျက်နေသည်…' : foodText.remove}</Text></Pressable>
       </> : null}
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
     </ScrollView>

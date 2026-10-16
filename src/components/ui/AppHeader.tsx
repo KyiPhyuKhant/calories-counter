@@ -14,7 +14,7 @@ export function AppHeader({ title, subtitle, leading, trailing }: { title: strin
 }
 
 const styles = StyleSheet.create({
-  header: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  header: { minHeight: 48, paddingVertical: theme.spacing.extraSmall, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.regular },
   copy: { flex: 1, minWidth: 0, gap: 4 },
   title: { ...theme.typography.title, color: theme.colors.text },
   subtitle: { ...theme.typography.caption, color: theme.colors.secondaryText },

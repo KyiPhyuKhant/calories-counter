@@ -3,7 +3,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { CalendarClock, Check, ChevronLeft, ChevronRight, Copy, Plus, Trash2 } from 'lucide-react-native';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { caloriesLabel, DiaryDateField, DiaryIconButton, diaryStyles, mealLabel } from '@/components/diaryUi';
+import { caloriesLabel, DiaryDateField, DiaryIconButton, diaryStyles, mealDayStyles, mealLabel } from '@/components/diaryUi';
 import { FoodSheet, foodStyles as styles } from '@/components/foodUi';
 import { useRepositories } from '@/data/DatabaseProvider';
 import type { PlannedFood } from '@/data/planRepository';
@@ -76,7 +76,7 @@ export function PlanScreen() {
     finally { setBusy(false); }
   }
   if (!validDate) return <View style={styles.status}><Text style={styles.error}>{foodText.invalidDate}</Text>
-    <Pressable accessibilityRole="button" style={styles.button} onPress={() => selectDate(openedDate)}><Text style={styles.buttonText}>မနက်ဖြန်သို့ ပြန်ရန်</Text></Pressable></View>;
+    <Pressable accessibilityRole="button" style={ui.confirmButton} onPress={() => selectDate(openedDate)}><Text style={ui.confirmText}>မနက်ဖြန်သို့ ပြန်ရန်</Text></Pressable></View>;
 
   const day = result?.date === date ? result : null;
   const totals = dailyTotals(day?.entries ?? []);
@@ -86,23 +86,23 @@ export function PlanScreen() {
     <ScrollView contentContainerStyle={styles.content}>
       <View style={ui.heading}>
         <CalendarClock size={24} color={planningColor} />
-        <Text accessibilityRole="header" style={styles.title}>{date > localCalendarDate() ? 'ကြိုတင်စားသောက်အစီအစဉ်' : 'စားသောက်အစီအစဉ်'}</Text>
+        <Text accessibilityRole="header" style={ui.title}>{date > localCalendarDate() ? 'ကြိုတင်စားသောက်အစီအစဉ်' : 'စားသောက်အစီအစဉ်'}</Text>
       </View>
       <View style={diaryStyles.dateRow}>
-        <DiaryIconButton icon={ChevronLeft} label="ယခင်နေ့အစီအစဉ်" disabled={busy || date === '1900-01-01'} onPress={() => selectDate(shiftCalendarDate(date, -1))} />
-        <DiaryDateField value={date} onChange={selectDate} disabled={busy} />
-        <DiaryIconButton icon={ChevronRight} label="နောက်နေ့အစီအစဉ်" disabled={busy || date === '2100-12-31'} onPress={() => selectDate(shiftCalendarDate(date, 1))} />
+        <DiaryIconButton icon={ChevronLeft} color={planningColor} label="ယခင်နေ့အစီအစဉ်" disabled={busy || date === '1900-01-01'} onPress={() => selectDate(shiftCalendarDate(date, -1))} />
+        <DiaryDateField value={date} onChange={selectDate} disabled={busy} color={planningColor} />
+        <DiaryIconButton icon={ChevronRight} color={planningColor} label="နောက်နေ့အစီအစဉ်" disabled={busy || date === '2100-12-31'} onPress={() => selectDate(shiftCalendarDate(date, 1))} />
       </View>
-      <View style={diaryStyles.controls}>
-        <Pressable accessibilityRole="button" disabled={busy} style={[ui.toolbarButton, diaryStyles.control]} onPress={() => selectDate(shiftCalendarDate(localCalendarDate(), 1))}><Text style={ui.actionText}>မနက်ဖြန်</Text></Pressable>
+      <View style={ui.cardActions}>
+        <Pressable accessibilityRole="button" disabled={busy} style={ui.toolbarButton} onPress={() => selectDate(shiftCalendarDate(localCalendarDate(), 1))}><Text style={ui.actionText}>မနက်ဖြန်</Text></Pressable>
         <Pressable accessibilityRole="button" disabled={busy} style={ui.toolbarButton} onPress={() => {
           setSource(date === '1900-01-01' ? date : shiftCalendarDate(date, -1)); setDestination(date); setActionError(''); setAction('copy');
-        }}><Copy size={18} color={planningColor} /><Text style={ui.actionText}>အစီအစဉ်ကူးရန်</Text></Pressable>
+        }}><Copy size={16} color={planningColor} /><Text style={ui.actionText}>အစီအစဉ်ကူးရန်</Text></Pressable>
       </View>
       {error ? <View style={styles.field}><Text accessibilityRole="alert" style={styles.error}>{error}</Text>
-        <Pressable accessibilityRole="button" style={styles.button} onPress={() => setRetry((current) => current + 1)}><Text style={styles.buttonText}>{foodText.retry}</Text></Pressable></View>
-        : !day ? <ActivityIndicator accessibilityLabel={foodText.loading} color={theme.colors.accent} /> : <>
-          <View style={ui.forecast}>
+        <Pressable accessibilityRole="button" style={ui.confirmButton} onPress={() => setRetry((current) => current + 1)}><Text style={ui.confirmText}>{foodText.retry}</Text></Pressable></View>
+        : !day ? <ActivityIndicator accessibilityLabel={foodText.loading} color={planningColor} /> : <>
+          <View style={ui.summary}>
             <Text style={styles.detail}>စီစဉ်ထားသော ကယ်လိုရီ</Text>
             <Text style={[styles.nutrition, ui.plannedTotal]}>{caloriesLabel(totals.total)}</Text>
             {progress ? <>
@@ -129,7 +129,7 @@ export function PlanScreen() {
                   {plan.eaten_at ? <Text style={styles.detail}>စားသုံးသည့်ရက် — {plan.eaten_date ? foodDateLabel(plan.eaten_date) : ''}{plan.diary_entry_id ? '' : ' (စားသုံးမှုမှတ်တမ်း ဖျက်ပြီး)'} </Text> : null}
                   {plan.source === 'bundled' ? <Text style={styles.detail}>အတည်မပြုထားသော နမူနာ</Text> : null}
                 </Pressable>
-                {!plan.eaten_at ? <DiaryIconButton icon={Trash2} label={`${displayFoodName(plan)} အစီအစဉ်ကို ဖျက်ရန်`} disabled={busy} onPress={() => Alert.alert('စီစဉ်ထားသော အစားအစာကို ဖျက်မလား။', displayFoodName(plan), [
+                {!plan.eaten_at ? <DiaryIconButton icon={Trash2} color={theme.colors.danger} label={`${displayFoodName(plan)} အစီအစဉ်ကို ဖျက်ရန်`} disabled={busy} onPress={() => Alert.alert('စီစဉ်ထားသော အစားအစာကို ဖျက်မလား။', displayFoodName(plan), [
                   { text: foodText.cancel, style: 'cancel' }, { text: foodText.remove, style: 'destructive', onPress: () => remove(plan) },
                 ])} /> : null}
               </View>)}
@@ -137,11 +137,11 @@ export function PlanScreen() {
               <View style={ui.cardActions}>
                 <Pressable accessibilityRole="button" accessibilityLabel={`${mealLabel(meal)}အတွက် အစားအစာစီစဉ်ရန်`} disabled={busy}
                   style={[ui.toolbarButton, busy && styles.disabled]} onPress={() => router.push({ pathname: '/plans/select', params: { date, meal } })}>
-                  <Plus size={18} color={planningColor} /><Text style={ui.actionText}>အစားအစာစီစဉ်ရန်</Text>
+                  <Plus size={16} color={planningColor} /><Text style={ui.actionText}>အစားအစာစီစဉ်ရန်</Text>
                 </Pressable>
                 {pending ? <Pressable accessibilityRole="button" accessibilityLabel={`${mealLabel(meal)}ကို စားပြီးအဖြစ် မှတ်တမ်းတင်ရန်`} disabled={busy}
-                  style={[ui.toolbarButton, busy && styles.disabled]} onPress={() => { setEatenDate(localCalendarDate()); setActionError(''); setAction(meal); }}>
-                  <Check size={18} color={theme.colors.accent} /><Text style={ui.eatenAction}>စားပြီးအဖြစ် မှတ်ရန်</Text>
+                  style={[ui.toolbarButton, ui.eatenButton, busy && styles.disabled]} onPress={() => { setEatenDate(localCalendarDate()); setActionError(''); setAction(meal); }}>
+                  <Check size={16} color={theme.colors.accent} /><Text style={ui.eatenAction}>စားပြီးအဖြစ် မှတ်ရန်</Text>
                 </Pressable> : null}
               </View>
             </View>;
@@ -151,25 +151,21 @@ export function PlanScreen() {
     <FoodSheet visible={action !== null} onClose={() => { if (!busy) setAction(null); }}
       title={action === 'copy' ? 'တစ်နေ့စာအစီအစဉ် ကူးရန်' : action ? `${mealLabel(action)}ကို စားပြီးအဖြစ် မှတ်ရန်` : 'စားသောက်အစီအစဉ်'}>
         {action === 'copy' ? <>
-          <Text style={styles.label}>ကူးယူမည့် မူလရက်</Text><DiaryDateField value={source} onChange={setSource} disabled={busy} />
-          <Text style={styles.label}>ကူးထည့်မည့်ရက်</Text><DiaryDateField value={destination} onChange={setDestination} disabled={busy} />
-        </> : <><Text style={styles.label}>စားသုံးသည့်ရက်</Text><DiaryDateField value={eatenDate} onChange={setEatenDate} disabled={busy} /></>}
-        <Pressable accessibilityRole="button" disabled={busy} style={[styles.button, busy && styles.disabled]} onPress={confirmAction}><Text style={styles.buttonText}>{busy ? foodText.saving : action === 'copy' ? 'အစီအစဉ်ကူးရန်' : 'စားသုံးမှု မှတ်တမ်းတင်ရန်'}</Text></Pressable>
-        <Pressable accessibilityRole="button" disabled={busy} style={styles.option} onPress={() => setAction(null)}><Text style={styles.body}>{foodText.cancel}</Text></Pressable>
+          <Text style={styles.label}>ကူးယူမည့် မူလရက်</Text><DiaryDateField value={source} onChange={setSource} disabled={busy} color={planningColor} />
+          <Text style={styles.label}>ကူးထည့်မည့်ရက်</Text><DiaryDateField value={destination} onChange={setDestination} disabled={busy} color={planningColor} />
+        </> : <><Text style={styles.label}>စားသုံးသည့်ရက်</Text><DiaryDateField value={eatenDate} onChange={setEatenDate} disabled={busy} color={planningColor} /></>}
+        <Pressable accessibilityRole="button" disabled={busy} style={[ui.confirmButton, busy && styles.disabled]} onPress={confirmAction}><Text style={ui.confirmText}>{busy ? foodText.saving : action === 'copy' ? 'အစီအစဉ်ကူးရန်' : 'စားသုံးမှု မှတ်တမ်းတင်ရန်'}</Text></Pressable>
+        <Pressable accessibilityRole="button" disabled={busy} style={ui.toolbarButton} onPress={() => setAction(null)}><Text style={ui.actionText}>{foodText.cancel}</Text></Pressable>
         {actionError ? <Text accessibilityRole="alert" style={styles.error}>{actionError}</Text> : null}
     </FoodSheet>
   </SafeAreaView>;
 }
 
-const planningColor = theme.colors.planning;
+const planningColor = theme.colors.mealPlan;
 const ui = StyleSheet.create({
-  heading: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
-  toolbarButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 8 },
-  actionText: { fontSize: 16, fontWeight: '600', color: planningColor, flexShrink: 1 },
-  forecast: { gap: 6, paddingVertical: 12, borderBottomWidth: 2, borderColor: planningColor },
+  ...mealDayStyles,
   plannedTotal: { color: planningColor },
   targetAction: { alignSelf: 'flex-start', paddingHorizontal: 0 },
-  mealCard: { gap: 12, padding: 16, borderRadius: 8, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: '#D6E3F2', borderLeftWidth: 4 },
-  cardActions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 },
-  eatenAction: { fontSize: 16, fontWeight: '600', color: theme.colors.accent, flexShrink: 1 },
+  eatenButton: { backgroundColor: theme.colors.accentSurface, borderColor: theme.colors.accentSurface },
+  eatenAction: { ...theme.typography.caption, fontWeight: '600', color: theme.colors.accent, flexShrink: 1 },
 });

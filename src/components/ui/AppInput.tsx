@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react-native';
 import { StyleSheet, Text, View, type TextInputProps } from 'react-native';
 import { FormInput } from '@/components/FormInput';
-import { theme } from '@/theme/theme';
+import { theme, uiStyles } from '@/theme/theme';
 
 export type AppInputProps = TextInputProps & {
   label: string; hideLabel?: boolean; error?: string; hint?: string; icon?: LucideIcon; unit?: string; variant?: 'default' | 'search';
@@ -21,9 +21,9 @@ export function AppInput({ label, hideLabel = false, error, hint, icon: Icon, un
 }
 
 const styles = StyleSheet.create({
-  field: { gap: 8 },
+  field: uiStyles.field,
   label: { ...theme.typography.label, lineHeight: undefined, color: theme.colors.text },
-  control: { minHeight: 50, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.control, backgroundColor: theme.colors.surface },
+  control: { ...uiStyles.input, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.small },
   search: { backgroundColor: theme.colors.surfaceMuted, borderColor: theme.colors.surfaceMuted },
   input: { ...theme.typography.body, lineHeight: undefined, color: theme.colors.text, flex: 1, padding: 0, minWidth: 0 },
   multiline: { alignItems: 'flex-start' },

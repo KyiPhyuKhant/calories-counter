@@ -1,20 +1,28 @@
+const brand = {
+  primary: '#21865A', primaryDark: '#075A43', primaryLight: '#A7D68E',
+  background: '#FAFAF7', text: '#17233B', border: '#E2E8E5',
+} as const;
+
 export const theme = {
   colors: {
-    background: '#FFFFFF',
+    ...brand,
     surface: '#FFFFFF',
-    surfaceMuted: '#F5F6F8',
-    text: '#14213D',
+    surfaceMuted: '#F0F4EF',
     secondaryText: '#566176',
-    primary: '#2F9E68',
-    onPrimary: '#14213D',
-    accent: '#20754C',
-    accentSurface: '#EAF7EF',
-    border: '#E3E6EB',
+    onPrimary: '#FFFFFF',
+    accent: brand.primaryDark,
+    accentSurface: brand.primaryLight,
     danger: '#B42318',
+    onDanger: '#FFFFFF',
     dangerSurface: '#FFF1F0',
     warning: '#945022',
-    planning: '#2563A0',
-    planningSurface: '#EAF2FB',
+    planning: brand.primary,
+    planningSurface: '#EEF5EA',
+    planningBorder: brand.border,
+    mealPlan: brand.primaryDark,
+    onMealPlan: '#FFFFFF',
+    mealPlanSurface: '#EEF5EA',
+    mealPlanBorder: brand.border,
   },
   spacing: {
     extraSmall: 4,
@@ -26,15 +34,23 @@ export const theme = {
   },
   radius: { small: 8, control: 12, card: 16 },
   typography: {
-    title: { fontSize: 26, lineHeight: 34, fontWeight: '700' },
-    heading: { fontSize: 20, lineHeight: 28, fontWeight: '600' },
-    body: { fontSize: 17, lineHeight: 26 },
-    label: { fontSize: 16, lineHeight: 24, fontWeight: '600' },
-    caption: { fontSize: 14, lineHeight: 22 },
-    button: { fontSize: 17, lineHeight: 24, fontWeight: '600' },
-    metric: { fontSize: 28, lineHeight: 36, fontWeight: '700' },
+    // Natural line metrics preserve Myanmar combining marks at every text size.
+    title: { fontSize: 24, lineHeight: undefined, fontWeight: '700' },
+    heading: { fontSize: 20, lineHeight: undefined, fontWeight: '600' },
+    body: { fontSize: 16, lineHeight: undefined },
+    label: { fontSize: 15, lineHeight: undefined, fontWeight: '600' },
+    caption: { fontSize: 14, lineHeight: undefined },
+    button: { fontSize: 16, lineHeight: undefined, fontWeight: '600' },
+    metric: { fontSize: 28, lineHeight: undefined, fontWeight: '700' },
   },
   shadow: {
-    card: { shadowColor: '#14213D', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 1 },
+    card: { shadowColor: brand.text, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 1 },
   },
+} as const;
+
+export const uiStyles = {
+  page: { paddingHorizontal: theme.spacing.medium, paddingVertical: theme.spacing.regular, gap: theme.spacing.regular, width: '100%', maxWidth: 560, alignSelf: 'center' },
+  field: { gap: theme.spacing.extraSmall },
+  input: { minHeight: 48, paddingHorizontal: theme.spacing.regular, paddingVertical: theme.spacing.small, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.control, backgroundColor: theme.colors.surface },
+  button: { minHeight: 48, paddingHorizontal: theme.spacing.medium, paddingVertical: theme.spacing.regular, borderRadius: theme.radius.control, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.primary },
 } as const;

@@ -11,22 +11,36 @@ The existing light-only configuration is preserved.
 
 | Token | Value | Purpose |
 | --- | --- | --- |
-| background / surface | `#FFFFFF` | Screens and cards |
-| primary | `#2F9E68` | Primary actions and progress |
-| accentSurface | `#EAF7EF` | Soft green surfaces |
-| text / onPrimary | `#14213D` | Navy text, including on primary green |
-| surfaceMuted | `#F5F6F8` | Search and segmented-control backgrounds |
-| accent | `#20754C` | Accessible green foregrounds and legacy filled buttons |
+| background | `#FAFAF7` | All screen backgrounds |
+| surface | `#FFFFFF` | Cards and inputs |
+| primary | `#21865A` | Primary actions and progress |
+| primaryDark / accent | `#075A43` | Links, icons and compact planning actions |
+| primaryLight / accentSurface | `#A7D68E` | Tinted cards and selected controls |
+| text | `#17233B` | Main text |
+| onPrimary | `#FFFFFF` | Text on primary buttons |
+| border | `#E2E8E5` | Dividers and input outlines |
+| surfaceMuted | `#F0F4EF` | Search and segmented-control backgrounds |
 | secondaryText | `#566176` | Secondary text |
 
-Navy primary-button labels and darker green links maintain normal-text contrast
-of at least 4.5:1; white text on the brighter reference green does not.
-Danger, warning and planning colors are separate semantic tokens.
+White labels on the supplied primary green and dark-green links maintain
+normal-text contrast of at least 4.5:1. Planning uses this same brand palette;
+danger and warning remain distinct semantic colors for useful feedback.
 
 Spacing follows a 4/8/12/16/24/32 scale. Controls use a 12px radius, cards 16px,
 and inset selections 8px. Native system fonts, consistent type styles and a subtle
 card shadow complete the foundation. Dynamic Type remains enabled, text wraps,
 and controls have at least a 44-point touch height.
+
+`uiStyles` in the same file shares page, field, input and button styling.
+Text uses natural line metrics to preserve Myanmar combining marks; do not
+force a short line height onto native inputs or labels.
+
+## Logo
+
+`assets/healthy-bowl-logo.png` is the unchanged, user-supplied square PNG.
+`src/components/BrandLogo.tsx` renders it without cropping on Home and Welcome.
+`app.json` configures it as the native app icon and sets the brand background.
+Icon changes require a new native build; Expo Go retains its own installed icon.
 
 ## Components
 

@@ -5,7 +5,7 @@ import { ChevronDown } from 'lucide-react-native';
 
 import { type Food, type ServingUnit } from '@/domain/food';
 import { foodFormUnits, foodText, unitLabels } from '@/i18n/foodMy';
-import { theme } from '@/theme/theme';
+import { theme, uiStyles } from '@/theme/theme';
 import { AppInput } from '@/components/ui/AppInput';
 
 export function foodSourceLabel(food: Food) {
@@ -56,19 +56,20 @@ export function ServingUnitPicker({ value, onChange, disabled }: { value: Servin
 
 export const foodStyles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.background },
-  content: { padding: 16, gap: 12, width: '100%', maxWidth: 560, alignSelf: 'center' },
-  title: { ...theme.typography.title, fontSize: 24, lineHeight: undefined, color: theme.colors.text },
+  content: uiStyles.page,
+  title: { ...theme.typography.title, color: theme.colors.text },
   body: { ...theme.typography.body, lineHeight: undefined, color: theme.colors.text },
   label: { ...theme.typography.label, lineHeight: undefined, color: theme.colors.text },
   detail: { ...theme.typography.caption, lineHeight: undefined, color: theme.colors.secondaryText },
   error: { ...theme.typography.caption, lineHeight: undefined, color: theme.colors.danger },
-  field: { gap: 8 },
-  input: { minHeight: 50, padding: 12, backgroundColor: theme.colors.surface, borderRadius: theme.radius.control, borderWidth: 1, borderColor: theme.colors.border, ...theme.typography.body, lineHeight: undefined, color: theme.colors.text },
-  button: { minHeight: 50, padding: 14, backgroundColor: theme.colors.accent, borderRadius: theme.radius.control, alignItems: 'center', justifyContent: 'center' },
-  buttonText: { ...theme.typography.button, lineHeight: undefined, color: theme.colors.surface },
+  field: uiStyles.field,
+  input: { ...uiStyles.input, ...theme.typography.body, color: theme.colors.text },
+  button: uiStyles.button,
+  buttonText: { ...theme.typography.button, color: theme.colors.onPrimary },
   destructive: { backgroundColor: theme.colors.danger },
+  destructiveText: { color: theme.colors.onDanger },
   disabled: { opacity: 0.5 },
-  option: { minHeight: 48, padding: 14, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.control },
+  option: uiStyles.input,
   selected: { backgroundColor: theme.colors.accentSurface, borderColor: theme.colors.accent },
   status: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, gap: 16 },
   nutrition: { ...theme.typography.metric, lineHeight: undefined, color: theme.colors.accent },

@@ -16,7 +16,7 @@ export default function MainTabs() {
     <Tabs.Screen name="index" options={{ title: 'ပင်မ', tabBarAccessibilityLabel: 'ပင်မစာမျက်နှာ', tabBarIcon: ({ color, size }) => <House color={color} size={size} /> }} />
     <Tabs.Screen name="diary" options={{ title: 'မှတ်တမ်း', tabBarAccessibilityLabel: 'စားသုံးမှုမှတ်တမ်း', tabBarIcon: ({ color, size }) => <BookOpen color={color} size={size} /> }} />
     <Tabs.Screen name="foods" options={{ title: 'အစားအစာ', tabBarAccessibilityLabel: 'အစားအစာစာရင်း', tabBarIcon: ({ color, size }) => <Search color={color} size={size} /> }} />
-    <Tabs.Screen name="plans" options={{ title: 'အစီအစဉ်', tabBarAccessibilityLabel: 'စားသောက်အစီအစဉ်', tabBarIcon: ({ color, size }) => <CalendarClock color={color} size={size} /> }} />
-    <Tabs.Screen name="(profile)" options={{ title: 'ကိုယ်ရေး', tabBarAccessibilityLabel: 'ကိုယ်ရေးအချက်အလက်', tabBarIcon: ({ color, size }) => <UserRound color={color} size={size} /> }} />
+    <Tabs.Screen name="plans" options={{ title: 'အစီအစဉ်', tabBarActiveTintColor: theme.colors.mealPlan, tabBarAccessibilityLabel: 'စားသောက်အစီအစဉ်', tabBarIcon: ({ color, size }) => <CalendarClock color={color} size={size} /> }} />
+    <Tabs.Screen name="(profile)" options={{ title: 'Profile', href: '/profile', tabBarAccessibilityLabel: 'Profile', tabBarIcon: ({ color, size }) => <UserRound color={color} size={size} /> }} />
   </Tabs>;
 }

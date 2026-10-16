@@ -15,7 +15,7 @@ export function FoodListItem({ food, onPress, selecting = false, image, disabled
   const name = displayFoodName(food);
   const energy = known ? `${Number(food.calories!.toFixed(1))} kcal / ${foodAmount(food.serving_amount, food.serving_unit)}` : foodText.unavailable;
   return <Pressable accessibilityRole="button" accessibilityLabel={`${name}၊ ${energy}၊ ${foodSourceLabel(food)}`}
-    accessibilityHint={selecting && known ? 'ဤအစားအစာကို ရွေးရန်' : 'အစားအစာအချက်အလက် ကြည့်ရန်'}
+    accessibilityHint={selecting && known ? 'ဤအစားအစာကို ရွေးရန်' : 'အချက်အလက် ကြည့်ရန်'}
     accessibilityState={{ disabled }} disabled={disabled} onPress={onPress}
     style={({ pressed }) => [styles.row, pressed && styles.pressed, disabled && styles.disabled]}>
     <View style={styles.thumbnail}>{thumbnail ? <Image source={thumbnail} accessible={false} style={styles.image} /> : <Utensils size={24} color={theme.colors.accent} />}</View>
@@ -29,10 +29,10 @@ export function FoodListItem({ food, onPress, selecting = false, image, disabled
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, minHeight: 76, borderBottomWidth: 1, borderColor: theme.colors.border },
+  row: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.regular, paddingVertical: theme.spacing.regular, minHeight: 72, borderBottomWidth: 1, borderColor: theme.colors.border },
   thumbnail: { width: 48, height: 48, borderRadius: theme.radius.control, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.accentSurface },
   image: { width: '100%', height: '100%', resizeMode: 'cover' },
-  copy: { flex: 1, minWidth: 0, gap: 2 },
+  copy: { flex: 1, minWidth: 0, gap: theme.spacing.extraSmall },
   name: { ...theme.typography.label, lineHeight: undefined, color: theme.colors.text },
   detail: { ...theme.typography.caption, lineHeight: undefined, color: theme.colors.secondaryText },
   source: { ...theme.typography.caption, lineHeight: undefined, color: theme.colors.secondaryText },

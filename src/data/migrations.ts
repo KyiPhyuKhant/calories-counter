@@ -5,6 +5,7 @@ import { normalizeFoodName } from '../domain/food.ts';
 import { localCalendarDate } from '../domain/diary.ts';
 import { recordCurrentTarget } from './targetHistory.ts';
 import { foodCatalogMigration } from './foodCatalogMigration.ts';
+import { eatenPlanDeleteTrigger } from './clearAppData.ts';
 
 const nutritionColumns = `
   name TEXT NOT NULL CHECK (length(trim(name)) > 0),
@@ -248,8 +249,7 @@ export const migrations = [{
         new.quantity IS NOT old.quantity OR new.quantity_mode IS NOT old.quantity_mode OR
         new.total_calories IS NOT old.total_calories)
       BEGIN SELECT RAISE(ABORT, 'Eaten plans are read-only'); END;
-    CREATE TRIGGER plans_eaten_delete BEFORE DELETE ON planned_meals WHEN old.eaten_at IS NOT NULL
-      BEGIN SELECT RAISE(ABORT, 'Eaten plans are retained as history'); END;
+    ${eatenPlanDeleteTrigger}
   `,
 }, {
   version: 6,

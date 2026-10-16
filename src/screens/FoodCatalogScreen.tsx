@@ -8,7 +8,7 @@ import { foodStyles as styles } from '@/components/foodUi';
 import { useRepositories } from '@/data/DatabaseProvider';
 import { cuisineLabels, hasKnownCalories, type Cuisine, type Food } from '@/domain/food';
 import { CuisinePicker } from '@/components/CuisinePicker';
-import { theme } from '@/theme/theme';
+import { theme, uiStyles } from '@/theme/theme';
 import { AppButton } from '@/components/ui/AppButton';
 import { AppInput } from '@/components/ui/AppInput';
 import { FoodListItem } from '@/components/ui/FoodListItem';
@@ -86,7 +86,7 @@ export function FoodCatalogScreen({ onSelect, onAddCustom }: { onSelect?: (food:
 }
 
 const local = StyleSheet.create({
-  header: { padding: 16, gap: 12, width: '100%', maxWidth: 560, alignSelf: 'center' },
-  list: { paddingHorizontal: 16, paddingBottom: 16, width: '100%', maxWidth: 560, alignSelf: 'center' },
-  footer: { paddingVertical: 20, gap: 16 },
+  header: uiStyles.page,
+  list: { paddingHorizontal: theme.spacing.medium, paddingBottom: theme.spacing.medium, width: '100%', maxWidth: 560, alignSelf: 'center' },
+  footer: { paddingVertical: theme.spacing.medium, gap: theme.spacing.regular },
 });

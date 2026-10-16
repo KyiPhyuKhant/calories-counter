@@ -1,4 +1,4 @@
-# Calorie Counter
+# CalNote
 
 A simple iOS calorie-tracking app built with **React Native, Expo, and TypeScript**.
 

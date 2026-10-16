@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppButton } from '@/components/ui/AppButton';
 import { FoodSheet, foodStyles } from '@/components/foodUi';
 import { cuisines, cuisineLabels, type Cuisine } from '@/domain/food';
-import { theme } from '@/theme/theme';
+import { theme, uiStyles } from '@/theme/theme';
 import { foodText } from '@/i18n/foodMy';
 
 export function CuisinePicker({ value, onChange, emptyLabel = foodText.all, disabled = false }: {
@@ -30,7 +30,7 @@ export function CuisinePicker({ value, onChange, emptyLabel = foodText.all, disa
 }
 
 const styles = StyleSheet.create({
-  control: { minHeight: 50, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: theme.radius.control, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceMuted },
+  control: { ...uiStyles.input, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.small },
   grow: { flex: 1 },
   disabled: { opacity: 0.5 },
 });

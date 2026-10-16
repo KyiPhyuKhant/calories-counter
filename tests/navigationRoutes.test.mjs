@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync } from 'node:fs';
 import test from 'node:test';
-import { renderModule } from './helpers/renderUI.mjs';
+import React from 'react';
+import { flattenStyle, renderModule } from './helpers/renderUI.mjs';
 import { createProfileForm } from '../src/navigation/profileSetup.ts';
+import { localCalendarDate } from '../src/domain/diary.ts';
+import { summarizeDashboard } from '../src/domain/dashboard.ts';
+import { theme } from '../src/theme/theme.ts';
 
 const elements = [];
 function host(type) { return (props) => { elements.push({ type, props }); return props.children; }; }
@@ -19,7 +23,10 @@ test('the five main tabs are ordered, labeled, anchored at Home and leave safe-a
   render('src/app/(tabs)/_layout.tsx');
   const tabs = elements.filter(({ type }) => type === 'Tab');
   assert.deepEqual(tabs.map(({ props }) => props.name), ['index', 'diary', 'foods', 'plans', '(profile)']);
-  assert.deepEqual(tabs.map(({ props }) => props.options.title), ['ပင်မ', 'မှတ်တမ်း', 'အစားအစာ', 'အစီအစဉ်', 'ကိုယ်ရေး']);
+  assert.deepEqual(tabs.map(({ props }) => props.options.title), ['ပင်မ', 'မှတ်တမ်း', 'အစားအစာ', 'အစီအစဉ်', 'Profile']);
+  assert.equal(tabs.find(({ props }) => props.name === '(profile)').props.options.href, '/profile');
+  assert.equal(tabs.find(({ props }) => props.name === 'plans').props.options.tabBarActiveTintColor, theme.colors.mealPlan);
+  assert.ok(existsSync('src/app/(tabs)/(profile)/profile.tsx'));
   assert.ok(tabs.every(({ props }) => props.options.tabBarAccessibilityLabel));
   const options = elements.find(({ type }) => type === 'Tabs').props;
   assert.equal(options.initialRouteName, 'index');
@@ -157,7 +164,89 @@ test('all food-entry routes preserve date validation and the default snacks meal
   }
 });
 
-test('Profile exposes all settings and history destinations without account actions', () => {
+test('Home keeps calorie progress and meal summaries without the redundant shortcut section', () => {
+  const day = summarizeDashboard(profile, [{ meal: 'breakfast', total_calories: 300 }]);
+  const { markup, nodes } = render('src/screens/DashboardScreen.tsx', 'DashboardScreen', {}, {
+    react: { ...React, useState: (initial) => React.useState(initial === null ? { date: localCalendarDate(), day } : initial) },
+    'expo-router': { ...routerMock, useFocusEffect() {} },
+    '@/data/DatabaseProvider': { useRepositories: () => ({}) },
+  });
+  assert.match(markup, /300 kcal/);
+  assert.match(markup, /စားသုံးပြီးသော အစားအစာများ/);
+  assert.ok(nodes.some(({ props }) => props.accessibilityRole === 'progressbar'));
+  const logo = nodes.find(({ type, props }) => type === 'Image' && props.accessibilityLabel === 'CalNote logo');
+  assert.ok(logo); assert.equal(flattenStyle(logo.props.style).width, 88);
+  for (const label of ['ကြိုတင်စီစဉ်ရန်', 'အစားအစာစာရင်း', 'Weight and calorie history', 'ကိုယ်ရေးအချက်အလက်']) {
+    assert.ok(!nodes.some(({ type, props }) => type === 'Text' && props.children === label));
+  }
+});
+
+test('the welcome screen displays the supplied local logo and preserves the setup action', () => {
+  const { nodes } = onboarding('welcome', createProfileForm(profile));
+  const logo = nodes.find(({ type, props }) => type === 'Image' && props.accessibilityLabel === 'CalNote logo');
+  assert.ok(logo); assert.match(logo.props.source.uri, /healthy-bowl-logo\.png$/);
+  assert.equal(flattenStyle(logo.props.style).width, 220);
+  assert.ok(nodes.some(({ type, props }) => type === 'Text' && props.accessibilityRole === 'header' && props.children === 'CalNote'));
+  assert.ok(nodes.some(({ type, props }) => type === 'Pressable' && props.accessibilityLabel === 'Get started'));
+});
+
+test('planning uses compact wrapping buttons with readable touch targets and preserves food-selection routes', () => {
+  const date = '2026-10-18'; const calls = []; let state = 0;
+  const result = { date, target: 2000, entries: [{ id: 'fixture', name: 'Test food', source: 'custom', meal: 'breakfast',
+    total_calories: 200, quantity: 1, quantity_mode: 'servings', serving_unit: 'g', eaten_at: null }] };
+  const { nodes } = render('src/screens/PlanScreen.tsx', 'PlanScreen', {}, {
+    react: { ...React, useState: (initial) => React.useState(state++ === 1 ? result : initial) },
+    'expo-router': { ...routerMock, useLocalSearchParams: () => ({ date }), useFocusEffect() {},
+      useRouter: () => ({ push: (href) => calls.push(href) }) },
+    '@/data/DatabaseProvider': { useRepositories: () => ({}) },
+  });
+  const addButtons = nodes.filter(({ type, props }) => type === 'Pressable' && props.accessibilityLabel?.endsWith('အတွက် အစားအစာစီစဉ်ရန်'));
+  assert.equal(addButtons.length, 4);
+  for (const { props } of addButtons) {
+    const style = flattenStyle(props.style);
+    assert.equal(style.minHeight, 44); assert.equal(style.height, undefined);
+    assert.equal(style.backgroundColor, theme.colors.mealPlanSurface);
+    assert.equal(style.alignSelf, 'flex-start'); props.onPress();
+  }
+  assert.deepEqual(calls.map(({ params }) => params), ['breakfast', 'lunch', 'dinner', 'snacks'].map((meal) => ({ date, meal })));
+  assert.ok(calls.every(({ pathname }) => pathname === '/plans/select'));
+  const labels = nodes.filter(({ type, props }) => type === 'Text' && props.children === 'အစားအစာစီစဉ်ရန်');
+  assert.ok(labels.every(({ props }) => flattenStyle(props.style).fontSize === 14));
+});
+
+test('Diary matches planning meal cards while keeping consumed totals and diary add/edit destinations', () => {
+  const date = '2026-10-18'; const calls = [];
+  const entry = { id: 'fixture', name: 'Test food', source: 'custom', meal: 'breakfast', entry_date: date,
+    total_calories: 200, quantity: 1, quantity_mode: 'servings', serving_unit: 'g', eaten_at: null };
+  function dayScreen(screen) {
+    let state = 0;
+    return render(`src/screens/${screen}.tsx`, screen, {}, {
+      react: { ...React, useState: (initial) => {
+        const index = state++;
+        return React.useState(index === 1 ? { date, entries: [entry], target: 2000 } : screen === 'DiaryScreen' && index === 2 ? false : initial);
+      } },
+      'expo-router': { ...routerMock, useLocalSearchParams: () => ({ date }), useFocusEffect() {},
+        useRouter: () => ({ push: (href) => calls.push(href) }) },
+      '@/data/DatabaseProvider': { useRepositories: () => ({ diary: {} }) },
+    });
+  }
+  const plans = dayScreen('PlanScreen');
+  const diary = dayScreen('DiaryScreen');
+  const cards = (nodes) => nodes.filter(({ type, props }) => type === 'View' && flattenStyle(props.style).borderLeftWidth === 3);
+  assert.equal(cards(diary.nodes).length, 4);
+  assert.deepEqual(cards(diary.nodes).map(({ props }) => flattenStyle(props.style)), cards(plans.nodes).map(({ props }) => flattenStyle(props.style)));
+  assert.match(diary.markup, /စားသုံးပြီး/); assert.match(diary.markup, /200 kcal/);
+  assert.doesNotMatch(diary.markup, /စီစဉ်ထားသော ကယ်လိုရီ/);
+  assert.equal((diary.markup.match(/မှတ်တမ်းမရှိသေးပါ/g) ?? []).length, 3);
+  const add = diary.nodes.filter(({ type, props }) => type === 'Pressable' && props.accessibilityLabel?.endsWith('တွင် အစားအစာထည့်ရန်'));
+  assert.equal(add.length, 4);
+  add.forEach(({ props }) => { assert.equal(flattenStyle(props.style).minHeight, 44); props.onPress(); });
+  assert.deepEqual(calls, ['breakfast', 'lunch', 'dinner', 'snacks'].map((meal) => ({ pathname: '/diary/select', params: { date, meal } })));
+  diary.nodes.find(({ type, props }) => type === 'Pressable' && props.accessibilityLabel === 'Test foodကို ပြင်ရန်').props.onPress();
+  assert.deepEqual(calls.at(-1), { pathname: '/diary/edit', params: { id: entry.id, date, meal: 'breakfast' } });
+});
+
+test('Profile exposes settings and one combined history button without account actions', () => {
   const calls = [];
   const { nodes, markup } = render('src/screens/ProfileOverviewScreen.tsx', 'ProfileOverviewScreen', {}, {
     'expo-router': { ...routerMock, useRouter: () => ({ push: (href) => calls.push(href) }) },
@@ -165,7 +254,9 @@ test('Profile exposes all settings and history destinations without account acti
   });
   const actions = nodes.filter(({ type }) => type === 'Pressable');
   actions.forEach(({ props }) => props.onPress());
-  assert.deepEqual(calls, ['/edit-profile', '/goal-settings', '/history', '/history/calories', '/settings']);
+  assert.deepEqual(calls, ['/edit-profile', '/goal-settings', '/history', '/settings']);
+  assert.equal(actions.filter(({ props }) => props.accessibilityLabel === 'Weight and calorie history').length, 1);
+  assert.doesNotMatch(markup, />Weight history<|>Calorie history</);
   assert.doesNotMatch(markup, /sign in|sign up|log in|account settings/i);
 });
 

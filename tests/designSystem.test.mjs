@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { theme } from '../src/theme/theme.ts';
+import React from 'react';
+import { readFileSync } from 'node:fs';
+import { theme, uiStyles } from '../src/theme/theme.ts';
 import { progressRingMetrics } from '../src/components/ui/progressRing.ts';
 import { renderModule, renderUI, flattenStyle } from './helpers/renderUI.mjs';
 
@@ -29,14 +31,71 @@ test('shared food sheets retain their native presentation, safe areas, heading, 
   assert.doesNotMatch(hidden.markup, /sheet content|ယူနစ်/);
 });
 
-test('reference tokens and text/button color pairs preserve accessible contrast', () => {
-  assert.equal(theme.colors.background, '#FFFFFF'); assert.equal(theme.colors.primary, '#2F9E68');
-  assert.equal(theme.colors.accentSurface, '#EAF7EF'); assert.equal(theme.colors.text, '#14213D');
-  assert.equal(theme.colors.surfaceMuted, '#F5F6F8'); assert.equal(theme.radius.card, 16);
+test('typography uses readable fixed sizes and natural line metrics without constraining control heights', () => {
+  assert.equal(theme.typography.title.fontSize, 24);
+  assert.equal(theme.typography.body.fontSize, 16);
+  for (const text of Object.values(theme.typography)) assert.equal(text.lineHeight, undefined);
+  const header = renderUI('AppHeader', { title: 'အစားအစာစာရင်း', subtitle: 'ကယ်လိုရီ' });
+  for (const node of header.nodes.filter(({ type }) => type === 'Text')) assert.equal(flattenStyle(node.props.style).lineHeight, undefined);
+  const input = renderUI('AppInput', { label: 'အစားအစာအမည်', value: 'မုန့်ဟင်းခါး' });
+  const control = input.nodes.find(({ type, props }) => type === 'View' && flattenStyle(props.style).borderWidth === 1);
+  const style = flattenStyle(control.props.style);
+  assert.equal(style.minHeight, 48); assert.equal(style.height, undefined);
+  assert.equal(style.paddingHorizontal, 12); assert.equal(style.paddingVertical, 8);
+});
+
+test('supplied brand tokens apply consistently and text/button color pairs preserve accessible contrast', () => {
+  assert.equal(theme.colors.background, '#FAFAF7'); assert.equal(theme.colors.primary, '#21865A');
+  assert.equal(theme.colors.primaryDark, '#075A43'); assert.equal(theme.colors.primaryLight, '#A7D68E');
+  assert.equal(theme.colors.text, '#17233B'); assert.equal(theme.colors.border, '#E2E8E5');
+  assert.equal(theme.colors.accent, theme.colors.primaryDark);
+  assert.equal(theme.colors.accentSurface, theme.colors.primaryLight);
+  assert.equal(theme.colors.mealPlan, theme.colors.primaryDark); assert.equal(theme.colors.planning, theme.colors.primary);
+  assert.equal(theme.radius.card, 16);
   assert.ok(contrast(theme.colors.onPrimary, theme.colors.primary) >= 4.5);
   assert.ok(contrast(theme.colors.accent, theme.colors.background) >= 4.5);
   assert.ok(contrast(theme.colors.secondaryText, theme.colors.background) >= 4.5);
   assert.ok(contrast(theme.colors.surface, theme.colors.danger) >= 4.5);
+  assert.ok(contrast(theme.colors.onMealPlan, theme.colors.mealPlan) >= 4.5);
+  assert.ok(contrast(theme.colors.mealPlan, theme.colors.mealPlanSurface) >= 4.5);
+});
+
+test('the supplied square logo is bundled locally, configured as the icon and rendered without cropping', () => {
+  const config = JSON.parse(readFileSync('app.json', 'utf8')).expo;
+  assert.equal(config.name, 'CalNote');
+  assert.equal(config.icon, './assets/healthy-bowl-logo.png');
+  assert.equal(config.backgroundColor, theme.colors.background);
+  const png = readFileSync(config.icon);
+  assert.deepEqual([...png.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
+  assert.equal(png.readUInt32BE(16), png.readUInt32BE(20)); assert.ok(png.readUInt32BE(16) >= 1024);
+  for (const size of [48, 88, 220]) {
+    const { nodes } = renderModule('src/components/BrandLogo.tsx', 'BrandLogo', { size });
+    const logo = nodes.find(({ type }) => type === 'Image').props;
+    assert.equal(logo.resizeMode, 'contain'); assert.equal(logo.accessibilityLabel, 'CalNote logo');
+    assert.equal(flattenStyle(logo.style).width, size); assert.equal(flattenStyle(logo.style).aspectRatio, 1);
+    assert.equal(flattenStyle(logo.style).height, size);
+    assert.match(logo.source.uri, /assets\/healthy-bowl-logo\.png$/);
+  }
+});
+
+test('forms and pickers share the same input tokens and Profile uses the shared primary button style', () => {
+  const input = renderUI('AppInput', { label: 'Name', value: 'Test' });
+  const control = input.nodes.find(({ type, props }) => type === 'View' && flattenStyle(props.style).borderWidth === 1);
+  const unit = renderModule('src/components/foodUi.tsx', 'ServingUnitPicker', { value: 'g', onChange() {}, disabled: false });
+  const cuisine = renderModule('src/components/CuisinePicker.tsx', 'CuisinePicker', { value: null, onChange() {} });
+  for (const style of [control.props.style, unit.nodes.find(({ type }) => type === 'Pressable').props.style, cuisine.nodes.find(({ type }) => type === 'Pressable').props.style]) {
+    const actual = flattenStyle(style);
+    for (const [key, value] of Object.entries(uiStyles.input)) assert.equal(actual[key], value);
+  }
+  const profile = renderModule('src/screens/ProfileScreen.tsx', 'ProfileScreen', {}, {
+    react: { ...React, useState: (initial) => React.useState(initial === true ? false : initial) },
+    '@/data/DatabaseProvider': { useRepositories: () => ({ profiles: {} }) },
+  });
+  assert.match(profile.markup, /Save profile/);
+  const save = profile.nodes.find(({ type, props }) => type === 'Pressable' && flattenStyle(props.style).backgroundColor === theme.colors.primary);
+  assert.ok(save);
+  for (const [key, value] of Object.entries(uiStyles.button)) assert.equal(flattenStyle(save.props.style)[key], value);
+  assert.ok(contrast(theme.colors.onDanger, theme.colors.danger) >= 4.5);
 });
 
 test('buttons expose disabled/loading states and preserve action callbacks', () => {
@@ -84,6 +143,8 @@ test('segments preserve selected/checked state and dispatch the selected option'
   buttons[1].props.onPress(); assert.equal(value, 'month');
   const disabled = renderUI('SegmentedControl', { label: 'Period', value: 'week', options, disabled: true });
   assert.ok(disabled.nodes.filter((node) => node.type === 'Pressable').every((node) => node.props.disabled));
+  const unselected = renderUI('SegmentedControl', { label: 'Period', value: '', options, role: 'radio', onChange() {} });
+  assert.ok(unselected.nodes.filter(({ type }) => type === 'Pressable').every(({ props }) => props.accessibilityState.checked === false));
 });
 
 test('food rows retain serving and unverified source labels and select/view semantics', () => {
@@ -92,7 +153,7 @@ test('food rows retain serving and unverified source labels and select/view sema
     let pressed = false;
     const result = renderUI('FoodListItem', { food, selecting, onPress: () => { pressed = true; } });
     const row = result.nodes.find((node) => node.type === 'Pressable').props;
-    assert.equal(row.accessibilityHint, selecting ? 'ဤအစားအစာကို ရွေးရန်' : 'အစားအစာအချက်အလက် ကြည့်ရန်');
+    assert.equal(row.accessibilityHint, selecting ? 'ဤအစားအစာကို ရွေးရန်' : 'အချက်အလက် ကြည့်ရန်');
     assert.ok(row.accessibilityLabel.includes('အတည်မပြုထားသော')); assert.ok(result.markup.includes('80 kcal / 1 ခု'));
     row.onPress(); assert.equal(pressed, true);
   }

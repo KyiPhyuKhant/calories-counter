@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { theme } from '@/theme/theme';
 
 export function SegmentedControl<T extends string>({ label, value, options, onChange, disabled = false, role = 'tab' }: {
-  label: string; value: T; options: readonly { value: T; label: string; disabled?: boolean }[];
+  label: string; value: T | ''; options: readonly { value: T; label: string; disabled?: boolean }[];
   onChange: (value: T) => void; disabled?: boolean; role?: 'tab' | 'radio';
 }) {
   return <View accessibilityLabel={label} style={styles.group}>

@@ -98,7 +98,7 @@ test('Myanmar-only food labels and display names never show a second English/nat
   assert.equal(displayFoodName({ name: 'Mohinga' }), 'မုန့်ဟင်းခါး');
   assert.equal(displayFoodName({ name: 'My old diary name' }), 'My old diary name');
   assert.equal(foodAmount(2, 'serving'), '2 ပွဲ');
-  assert.equal(foodDateLabel('2026-10-15'), '15 အောက်တိုဘာ 2026');
+  assert.equal(foodDateLabel('2026-10-15'), '15 October 2026');
   assert.throws(() => foodDateLabel('2026-02-30'));
 });
 

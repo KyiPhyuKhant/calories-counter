@@ -1,11 +1,12 @@
 import { useRef, useState } from 'react';
 import { Redirect, useRouter } from 'expo-router';
-import { ArrowRight, Check, Salad } from 'lucide-react-native';
+import { ArrowRight, Check } from 'lucide-react-native';
 import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppButton } from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
 import { AppHeader } from '@/components/ui/AppHeader';
+import { BrandLogo } from '@/components/BrandLogo';
 import { AppInput } from '@/components/ui/AppInput';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { useRepositories } from '@/data/DatabaseProvider';
@@ -13,7 +14,7 @@ import { activityLevels, calculateCalorieGoal, validateCalorieProfile } from '@/
 import { useLocalProfile } from '@/navigation/LocalProfileProvider';
 import { useOnboarding } from '@/navigation/OnboardingProvider';
 import { calorieProfileFromForm, profileSetupErrors, type ProfileForm } from '@/navigation/profileSetup';
-import { theme } from '@/theme/theme';
+import { theme, uiStyles } from '@/theme/theme';
 
 type Step = 'welcome' | 'profile' | 'activity' | 'target';
 const measurements = [
@@ -59,8 +60,8 @@ export function OnboardingScreen({ step }: { step: Step }) {
   return <SafeAreaView edges={step === 'welcome' ? ['top', 'left', 'right', 'bottom'] : ['left', 'right', 'bottom']} style={styles.screen}>
     <ScrollView automaticallyAdjustKeyboardInsets keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, step === 'welcome' && styles.welcome]}>
       {step === 'welcome' ? <>
-        <View style={styles.art}><Salad size={112} strokeWidth={1.5} color={theme.colors.accent} /></View>
-        <AppHeader title="A healthier you starts here" subtitle="Track your meals and build habits around your goals." />
+        <View style={styles.art}><BrandLogo size={220} /></View>
+        <AppHeader title="CalNote" subtitle="Track your meals and build habits around your goals." />
         <Text style={styles.detail}>Your data stays on this device. No account needed.</Text>
         <AppButton title="Get started" icon={ArrowRight} onPress={() => router.push('/onboarding/profile')} />
       </> : step === 'profile' ? <>
@@ -111,9 +112,9 @@ export function OnboardingScreen({ step }: { step: Step }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.background },
-  content: { flexGrow: 1, padding: 24, gap: 20, width: '100%', maxWidth: 560, alignSelf: 'center' },
+  content: { ...uiStyles.page, flexGrow: 1 },
   welcome: { justifyContent: 'center', gap: 28 },
-  art: { alignSelf: 'center', padding: 32, borderRadius: 100, backgroundColor: theme.colors.accentSurface },
+  art: { alignSelf: 'center' },
   body: { ...theme.typography.body, color: theme.colors.text },
   detail: { ...theme.typography.caption, color: theme.colors.secondaryText },
   label: { ...theme.typography.label, color: theme.colors.text },

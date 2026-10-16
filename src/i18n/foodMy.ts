@@ -42,7 +42,20 @@ export function foodAmount(value: number, unit: ServingUnit) {
 export const mealLabels: Record<Meal, string> = { breakfast: 'နံနက်စာ', lunch: 'နေ့လယ်စာ', dinner: 'ညစာ', snacks: 'အဆာပြေ' };
 export function foodDateLabel(value: string) {
   const date = validateCalendarDate(value);
-  const months = ['ဇန်နဝါရီ', 'ဖေဖော်ဝါရီ', 'မတ်', 'ဧပြီ', 'မေ', 'ဇွန်', 'ဇူလိုင်', 'ဩဂုတ်', 'စက်တင်ဘာ', 'အောက်တိုဘာ', 'နိုဝင်ဘာ', 'ဒီဇင်ဘာ'];
+  const months = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December'
+];
   return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
 }
 

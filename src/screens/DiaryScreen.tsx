@@ -1,10 +1,10 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { BookOpen, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react-native';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { caloriesLabel, DiaryDateField, DiaryIconButton, diaryStyles, mealLabel } from '@/components/diaryUi';
+import { caloriesLabel, DiaryDateField, DiaryIconButton, diaryStyles, mealDayStyles as ui, mealLabel } from '@/components/diaryUi';
 import { foodStyles as styles } from '@/components/foodUi';
 import { useRepositories } from '@/data/DatabaseProvider';
 import { dailyTotals, localCalendarDate, meals, shiftCalendarDate, validateCalendarDate, type DiaryEntry, type Meal } from '@/domain/diary';
@@ -52,7 +52,7 @@ export function DiaryScreen() {
     finally { setDeleting(null); }
   }
   if (!validDate) return <View style={styles.status}><Text style={styles.error}>{foodText.invalidDate}</Text>
-    <Pressable accessibilityRole="button" style={styles.button} onPress={() => router.setParams({ date: localCalendarDate() })}><Text style={styles.buttonText}>ယနေ့သို့ ပြန်ရန်</Text></Pressable></View>;
+    <Pressable accessibilityRole="button" style={ui.confirmButton} onPress={() => router.setParams({ date: localCalendarDate() })}><Text style={ui.confirmText}>ယနေ့သို့ ပြန်ရန်</Text></Pressable></View>;
 
   const entries = result.date === date ? result.entries : [];
   const totals = dailyTotals(entries);
@@ -61,49 +61,46 @@ export function DiaryScreen() {
     <ScrollView contentContainerStyle={styles.content}>
       <View style={ui.heading}>
         <BookOpen size={24} color={theme.colors.accent} />
-        <Text accessibilityRole="header" style={styles.title}>စားသုံးမှုမှတ်တမ်း</Text>
+        <Text accessibilityRole="header" style={ui.title}>စားသုံးမှုမှတ်တမ်း</Text>
       </View>
       <View style={diaryStyles.dateRow}>
         <DiaryIconButton icon={ChevronLeft} label="ယခင်နေ့" disabled={date === '1900-01-01'} onPress={() => selectDate(shiftCalendarDate(date, -1))} />
         <DiaryDateField value={date} onChange={selectDate} />
         <DiaryIconButton icon={ChevronRight} label="နောက်နေ့" disabled={date === '2100-12-31'} onPress={() => selectDate(shiftCalendarDate(date, 1))} />
       </View>
-      {date !== localCalendarDate() ? <Pressable accessibilityRole="button" style={ui.today} onPress={() => selectDate(localCalendarDate())}><Text style={ui.actionText}>ယနေ့</Text></Pressable> : null}
-      <View style={ui.total}>
+      {date !== localCalendarDate() ? <Pressable accessibilityRole="button" style={ui.toolbarButton} onPress={() => selectDate(localCalendarDate())}><Text style={ui.actionText}>ယနေ့</Text></Pressable> : null}
+      <View style={ui.summary}>
         <Text style={styles.detail}>စားသုံးပြီး</Text>
         {busy ? <ActivityIndicator accessibilityLabel={foodText.loading} color={theme.colors.accent} />
           : error ? <Text style={styles.body}>ဖတ်ယူ၍မရပါ</Text> : <Text style={styles.nutrition}>{caloriesLabel(totals.total)}</Text>}
       </View>
       {error ? <><Text accessibilityRole="alert" style={styles.error}>{error}</Text>
-        <Pressable accessibilityRole="button" style={styles.button} onPress={() => setRetry((value) => value + 1)}><Text style={styles.buttonText}>{foodText.retry}</Text></Pressable></> : null}
-      {!busy && !error ? meals.map((meal) => <View key={meal} style={diaryStyles.section}>
+        <Pressable accessibilityRole="button" style={ui.confirmButton} onPress={() => setRetry((value) => value + 1)}><Text style={ui.confirmText}>{foodText.retry}</Text></Pressable></> : null}
+      {!busy && !error ? meals.map((meal) => <View key={meal} style={ui.mealCard}>
         <View style={diaryStyles.mealHeader}>
           <Text accessibilityRole="header" style={[styles.label, diaryStyles.grow]}>{mealLabel(meal)}</Text>
           <Text style={styles.body}>{caloriesLabel(totals.byMeal[meal])}</Text>
-          <DiaryIconButton icon={Plus} label={`${mealLabel(meal)}တွင် အစားအစာထည့်ရန်`} onPress={() => add(meal)} />
         </View>
         {entries.filter((entry) => entry.meal === meal).map((entry) => <View key={entry.id} style={diaryStyles.entryRow}>
           <Pressable accessibilityRole="button" accessibilityLabel={`${displayFoodName(entry)}ကို ပြင်ရန်`} disabled={Boolean(deleting)} style={diaryStyles.entry}
             onPress={() => router.push({ pathname: '/diary/edit', params: { id: entry.id, date: entry.entry_date, meal: entry.meal } })}>
-            <View style={ui.foodRow}><Text style={[styles.label, diaryStyles.grow]}>{displayFoodName(entry)}</Text>
+            <View style={diaryStyles.mealHeader}><Text style={[styles.label, diaryStyles.grow]}>{displayFoodName(entry)}</Text>
               <Text style={styles.body}>{caloriesLabel(entry.total_calories)}</Text></View>
             <Text style={styles.detail}>{foodAmount(entry.quantity, entry.quantity_mode === 'servings' ? 'serving' : entry.serving_unit)}</Text>
             {entry.source === 'bundled' ? <Text style={styles.detail}>အတည်မပြုထားသော နမူနာ</Text> : null}
           </Pressable>
-          <DiaryIconButton icon={Trash2} label={`${displayFoodName(entry)}ကို ဖျက်ရန်`} disabled={Boolean(deleting)} onPress={() => Alert.alert('စားသုံးမှုမှတ်တမ်းကို ဖျက်မလား။', displayFoodName(entry), [
+          <DiaryIconButton icon={Trash2} color={theme.colors.danger} label={`${displayFoodName(entry)}ကို ဖျက်ရန်`} disabled={Boolean(deleting)} onPress={() => Alert.alert('စားသုံးမှုမှတ်တမ်းကို ဖျက်မလား။', displayFoodName(entry), [
             { text: foodText.cancel, style: 'cancel' }, { text: foodText.remove, style: 'destructive', onPress: () => remove(entry) },
           ])} />
         </View>)}
         {!entries.some((entry) => entry.meal === meal) ? <Text style={styles.detail}>မှတ်တမ်းမရှိသေးပါ</Text> : null}
+        <View style={ui.cardActions}>
+          <Pressable accessibilityRole="button" accessibilityLabel={`${mealLabel(meal)}တွင် အစားအစာထည့်ရန်`}
+            style={ui.toolbarButton} onPress={() => add(meal)}>
+            <Plus size={16} color={theme.colors.accent} /><Text style={ui.actionText}>အစားအစာထည့်ရန်</Text>
+          </Pressable>
+        </View>
       </View>) : null}
     </ScrollView>
   </SafeAreaView>;
 }
-
-const ui = StyleSheet.create({
-  heading: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
-  total: { paddingVertical: 12, borderBottomWidth: 2, borderColor: theme.colors.accent, gap: 4 },
-  today: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
-  actionText: { fontSize: 16, fontWeight: '600', color: theme.colors.accent },
-  foodRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
-});

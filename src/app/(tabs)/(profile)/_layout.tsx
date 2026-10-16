@@ -10,6 +10,6 @@ export default function ProfileStack() {
     <Stack.Screen name="history/index" options={{ title: 'History' }} />
     <Stack.Screen name="history/calories" options={{ title: 'Calorie history' }} />
     <Stack.Screen name="history/weight" options={{ title: 'Weight measurement' }} />
-    <Stack.Screen name="settings" options={{ title: 'App settings' }} />
+    <Stack.Screen name="settings" options={{ title: 'App Settings' }} />
   </Stack>;
 }
